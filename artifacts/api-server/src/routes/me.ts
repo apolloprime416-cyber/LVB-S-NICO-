@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq, desc, ne, isNull } from "drizzle-orm";
-import { db, licenseKeysTable } from "@workspace/db";
+import { db, licenseKeysTable, extensionFilesTable } from "@workspace/db";
 import { ActivateKeyBody } from "@workspace/api-zod";
 import { requireClient } from "../middlewares/auth";
 import {
@@ -148,5 +148,67 @@ router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
 
   res.status(201).json(serializeKey(created));
 });
+
+/** True when the user owns at least one paid (non-trial, non-revoked) key. */
+async function hasPaidKey(userId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: licenseKeysTable.id })
+    .from(licenseKeysTable)
+    .where(
+      and(
+        eq(licenseKeysTable.userId, userId),
+        ne(licenseKeysTable.plan, "trial"),
+        ne(licenseKeysTable.status, "revoked"),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+// Extension download availability for the logged-in client.
+router.get("/me/extension", requireClient, async (req, res): Promise<void> => {
+  const [file] = await db
+    .select({
+      filename: extensionFilesTable.filename,
+      size: extensionFilesTable.size,
+      updatedAt: extensionFilesTable.updatedAt,
+    })
+    .from(extensionFilesTable)
+    .limit(1);
+  const unlocked = await hasPaidKey(req.currentUser!.id);
+  res.json({
+    available: Boolean(file),
+    unlocked,
+    filename: file?.filename ?? null,
+    size: file?.size ?? null,
+    updatedAt: file?.updatedAt ? file.updatedAt.toISOString() : null,
+  });
+});
+
+// Download the extension zip — only for clients who own a paid key.
+router.get(
+  "/me/extension/download",
+  requireClient,
+  async (req, res): Promise<void> => {
+    const unlocked = await hasPaidKey(req.currentUser!.id);
+    if (!unlocked) {
+      res.status(403).json({
+        error: "Adquira uma key para liberar o download da extensão",
+      });
+      return;
+    }
+    const [file] = await db.select().from(extensionFilesTable).limit(1);
+    if (!file) {
+      res.status(404).json({ error: "Nenhum arquivo disponível" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${file.filename.replace(/[^\w.\-]/g, "_")}"`,
+    );
+    res.send(Buffer.from(file.data));
+  },
+);
 
 export default router;

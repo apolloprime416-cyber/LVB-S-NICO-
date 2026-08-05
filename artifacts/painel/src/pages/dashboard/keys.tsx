@@ -291,7 +291,7 @@ export default function AdminKeys() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+                            className="h-6 w-6 hover:bg-white/10"
                             onClick={() => copyToClipboard(key.code)}
                             title="Copiar Key Completa"
                           >

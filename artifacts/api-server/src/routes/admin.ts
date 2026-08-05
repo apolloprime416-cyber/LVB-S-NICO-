@@ -1,7 +1,12 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, raw } from "express";
 import bcrypt from "bcryptjs";
 import { and, eq, desc, sql } from "drizzle-orm";
-import { db, usersTable, licenseKeysTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  licenseKeysTable,
+  extensionFilesTable,
+} from "@workspace/db";
 import {
   GetUsersQueryParams,
   SetUserPasswordBody,
@@ -254,5 +259,63 @@ router.delete("/admin/keys/:id", async (req, res): Promise<void> => {
   }
   res.json({ ok: true });
 });
+
+// --- Extension file management ---
+
+router.get("/admin/extension", async (_req, res): Promise<void> => {
+  const [file] = await db
+    .select({
+      filename: extensionFilesTable.filename,
+      size: extensionFilesTable.size,
+      updatedAt: extensionFilesTable.updatedAt,
+    })
+    .from(extensionFilesTable)
+    .limit(1);
+  if (!file) {
+    res.json({ available: false, filename: null, size: null, updatedAt: null });
+    return;
+  }
+  res.json({
+    available: true,
+    filename: file.filename,
+    size: file.size,
+    updatedAt: file.updatedAt.toISOString(),
+  });
+});
+
+// Upload/replace the extension zip. Body is the raw zip bytes; the
+// filename comes via the X-Filename header (or ?filename=).
+router.put(
+  "/admin/extension",
+  raw({ type: () => true, limit: "50mb" }),
+  async (req, res): Promise<void> => {
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: "Arquivo vazio" });
+      return;
+    }
+    const rawName =
+      (req.header("x-filename") ?? String(req.query.filename ?? "")).trim() ||
+      "extensao.zip";
+    const filename = rawName.replace(/[^\w.\- ()]/g, "_");
+
+    // Single-row table: replace any existing file.
+    await db.delete(extensionFilesTable);
+    const [created] = await db
+      .insert(extensionFilesTable)
+      .values({ filename, size: body.length, data: body })
+      .returning({
+        filename: extensionFilesTable.filename,
+        size: extensionFilesTable.size,
+        updatedAt: extensionFilesTable.updatedAt,
+      });
+    res.status(201).json({
+      available: true,
+      filename: created.filename,
+      size: created.size,
+      updatedAt: created.updatedAt.toISOString(),
+    });
+  },
+);
 
 export default router;

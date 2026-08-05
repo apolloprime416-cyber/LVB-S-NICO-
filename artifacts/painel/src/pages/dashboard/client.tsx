@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGetMyKeys, useActivateKey, useResetMyKeyDevice, useGenerateTrial, getGetMyKeysQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
-import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check } from 'lucide-react';
+import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check, Download, Lock, Package } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function PainelClient() {
@@ -30,7 +30,15 @@ export default function PainelClient() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const hasPaidKeys = keys?.some(k => k.plan !== 'trial');
+  const hasPaidKeys = keys?.some(k => k.plan !== 'trial' && k.status !== 'revoked');
+
+  const [extension, setExtension] = useState<{ available: boolean; unlocked: boolean; filename: string | null } | null>(null);
+  useEffect(() => {
+    fetch('/api/me/extension', { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(setExtension)
+      .catch(() => setExtension(null));
+  }, [keys]);
 
   const handleActivate = () => {
     if (!activationCode) return;
@@ -142,6 +150,35 @@ export default function PainelClient() {
             </p>
           </div>
         </div>
+      )}
+
+      {extension?.available && (
+        <Card className="glass-panel border-white/10">
+          <CardContent className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${extension.unlocked ? 'bg-primary/15 text-primary' : 'bg-white/5 text-muted-foreground'}`}>
+                {extension.unlocked ? <Package className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-foreground">Extensão LVB Sônico</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {extension.unlocked
+                    ? 'Download liberado. Baixe a versão mais recente da extensão.'
+                    : 'Bloqueado — adquira uma key para liberar o download da extensão e os testes grátis.'}
+                </p>
+              </div>
+            </div>
+            <Button
+              className={`shrink-0 ${!extension.unlocked ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-lg shadow-primary/20'}`}
+              disabled={!extension.unlocked}
+              onClick={() => { window.location.href = '/api/me/extension/download'; }}
+              title={extension.unlocked ? 'Baixar extensão' : 'Adquira uma key para liberar'}
+            >
+              {extension.unlocked ? <Download className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
+              Baixar Extensão
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {keys && keys.length === 0 ? (

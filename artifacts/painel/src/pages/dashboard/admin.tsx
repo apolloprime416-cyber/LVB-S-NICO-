@@ -1,7 +1,104 @@
+import { useRef, useState, useEffect } from 'react';
 import { useGetAdminStats } from '@workspace/api-client-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Users, Key, Clock, AlertTriangle, ShieldCheck, Activity, UserPlus, Fingerprint } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Users, Key, Clock, AlertTriangle, ShieldCheck, Activity, UserPlus, Fingerprint, Package, Upload } from 'lucide-react';
 import { format } from 'date-fns';
+
+interface ExtensionInfo {
+  available: boolean;
+  filename: string | null;
+  size: number | null;
+  updatedAt: string | null;
+}
+
+function formatBytes(size: number | null): string {
+  if (!size) return '-';
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ExtensionFileCard() {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [info, setInfo] = useState<ExtensionInfo | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const loadInfo = () => {
+    fetch('/api/admin/extension', { credentials: 'include' })
+      .then(r => r.json())
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  };
+  useEffect(loadInfo, []);
+
+  const handleUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const res = await fetch('/api/admin/extension', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/zip', 'X-Filename': file.name },
+        body: file,
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setInfo(data);
+      toast({ title: 'Arquivo atualizado', description: 'Os clientes com key paga já podem baixar esta versão.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro no envio', description: 'Não foi possível enviar o arquivo. Tente novamente.' });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <Card className="glass-panel border-white/10">
+      <CardHeader className="border-b border-white/5 pb-4">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Package className="w-5 h-5 text-primary" />
+          Arquivo da Extensão
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Este é o arquivo que os clientes baixam no painel. O download só é liberado para quem possui uma key paga.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6 space-y-4">
+        {info?.available ? (
+          <div className="flex items-center justify-between rounded-md border border-white/10 bg-black/30 px-4 py-3">
+            <div className="min-w-0">
+              <p className="font-mono text-sm text-foreground truncate">{info.filename}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {formatBytes(info.size)}{info.updatedAt ? ` • atualizado em ${format(new Date(info.updatedAt), 'dd/MM/yyyy HH:mm')}` : ''}
+              </p>
+            </div>
+            <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 shrink-0 ml-3">Disponível</span>
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-muted-foreground">
+            Nenhum arquivo enviado ainda. Envie o zip da extensão para liberar o download aos clientes.
+          </div>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".zip"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleUpload(f);
+          }}
+        />
+        <Button className="w-full" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+          {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+          {info?.available ? 'Substituir arquivo (.zip)' : 'Enviar arquivo (.zip)'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useGetAdminStats();
@@ -139,6 +236,8 @@ export default function AdminDashboard() {
           </div>
         </Card>
       </div>
+
+      <ExtensionFileCard />
     </div>
   );
 }

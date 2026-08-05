@@ -13,3 +13,9 @@ The api-server uses express-session + connect-pg-simple (table `user_sessions`) 
 CREATE TABLE IF NOT EXISTS "user_sessions" ("sid" varchar PRIMARY KEY, "sess" json NOT NULL, "expire" timestamp(6) NOT NULL);
 CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire" ON "user_sessions" ("expire");
 ```
+
+Related: `drizzle-kit push` cannot run non-interactively here (prompts for the schema-vs-DB table conflict and dies without a TTY), so new tables (e.g. `extension_files`) were also created manually via psql — remember to create them in production too:
+
+```sql
+CREATE TABLE IF NOT EXISTS extension_files (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), filename text NOT NULL, size integer NOT NULL, data bytea NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+```
