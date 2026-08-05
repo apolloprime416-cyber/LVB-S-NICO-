@@ -19,7 +19,7 @@ const loginSchema = z.object({
 });
 
 const codeSchema = z.object({
-  code: z.string().min(6, { message: 'O código deve ter 6 dígitos.' }),
+  code: z.string().min(1, { message: 'Insira o código de acesso.' }),
 });
 
 export default function Login() {
@@ -122,7 +122,7 @@ export default function Login() {
             <CardDescription className="text-center text-xs">
               {step === 'login' 
                 ? 'Insira suas credenciais para continuar' 
-                : 'Insira o código de 6 dígitos enviado para você'}
+                : 'Insira o código de acesso do administrador'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -178,10 +178,10 @@ export default function Login() {
                         <FormLabel className="text-xs uppercase text-muted-foreground tracking-wider">Código de Autenticação</FormLabel>
                         <FormControl>
                           <Input 
-                            placeholder="123456" 
-                            className="bg-black/20 border-white/10 text-center text-2xl tracking-[0.5em] font-mono h-14 focus-visible:ring-primary" 
+                            placeholder="········" 
+                            className="bg-black/20 border-white/10 text-center text-2xl tracking-[0.3em] font-mono h-14 focus-visible:ring-primary" 
                             {...field} 
-                            maxLength={6}
+                            maxLength={16}
                           />
                         </FormControl>
                         <FormMessage className="text-xs" />
