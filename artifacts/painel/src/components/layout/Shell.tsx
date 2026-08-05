@@ -31,14 +31,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
     setOpen(false);
     setDownloading(true);
     try {
-      const res = await fetch('/api/me/extension', { credentials: 'include' });
+      const infoUrl = isAdmin ? '/api/admin/extension' : '/api/me/extension';
+      const res = await fetch(infoUrl, { credentials: 'include' });
       const info = res.ok ? await res.json() : null;
       if (!info?.available) {
         toast({ variant: 'destructive', title: 'Indisponível', description: 'Nenhum arquivo de extensão foi publicado ainda.' });
-      } else if (!info.unlocked) {
+      } else if (!isAdmin && !info.unlocked) {
         toast({ variant: 'destructive', title: 'Download bloqueado', description: 'Adquira e ative uma key para liberar o download da extensão.' });
       } else {
-        window.location.href = '/api/me/extension/download';
+        window.location.href = isAdmin ? '/api/admin/extension/download' : '/api/me/extension/download';
       }
     } catch {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível verificar o arquivo. Tente novamente.' });
@@ -85,8 +86,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           );
         })}
       </div>
-      {!isAdmin && (
-        <div className="px-4 pb-4">
+      <div className="px-4 pb-4">
           <Button
             className="w-full h-11 font-bold tracking-wide uppercase text-xs bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg shadow-primary/30 animate-in fade-in"
             onClick={handleDownloadExtension}
@@ -96,7 +96,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             Baixar Extensão
           </Button>
         </div>
-      )}
     </>
   );
 

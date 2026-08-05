@@ -283,6 +283,23 @@ router.get("/admin/extension", async (_req, res): Promise<void> => {
   });
 });
 
+router.get(
+  "/admin/extension/download",
+  async (_req, res): Promise<void> => {
+    const [file] = await db.select().from(extensionFilesTable).limit(1);
+    if (!file) {
+      res.status(404).json({ error: "Nenhum arquivo disponível" });
+      return;
+    }
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${file.filename.replace(/[^\w.\-]/g, "_")}"`,
+    );
+    res.send(Buffer.from(file.data));
+  },
+);
+
 // Upload/replace the extension zip. Body is the raw zip bytes; the
 // filename comes via the X-Filename header (or ?filename=).
 router.put(
