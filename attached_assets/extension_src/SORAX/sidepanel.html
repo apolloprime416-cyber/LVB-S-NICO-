@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Lovable - Painel Lateral</title>
+  <script src="branding.config.js"></script>
+  <script src="remote-branding.js"></script>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  
+
+  <div class="sp-header">
+    <div class="sp-brand">
+      <span class="sp-brand-text" data-ts-brand="name">Painel Lovable </span>
+      <span class="sp-badge">PRO</span>
+    </div>
+    <div class="sp-header-actions">
+      <!-- Layout mode toggle moved next to volume in profile actions -->
+
+      <button class="sp-icon-btn sp-theme-btn" title="Tema" style="display:none">
+        <svg class="sp-theme-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="sp-theme-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+      <button class="sp-icon-btn sp-logout-btn" title="Sair" style="display:none">🚪</button>
+    </div>
+  </div>
+  
+  <div class="sp-body" id="sp-body">
+    <div class="sp-license-gate" id="sp-loading" style="padding:40px 0;text-align:center">
+      <p style="color:var(--ql-text-muted)">🚀 Iniciando SORAX PRO...</p>
+    </div>
+  </div>
+
+  <div class="sp-footer">
+  <div class="sp-footer-badge" data-ts-brand="footer">
+    Desenvolvido por Lov Prime 
+  </div>
+</div>
+
+  <div class="sp-notif-panel" id="sp-notif-panel" style="display:none">
+    <div class="sp-notif-header">
+      <span>Notificações</span>
+      <button class="sp-notif-close" id="sp-notif-close">✕</button>
+    </div>
+    <div class="sp-notif-list" id="sp-notif-list">
+      <p class="sp-notif-empty">Carregando...</p>
+    </div>
+  </div>
+
+  <script src="jszip.min.js"></script>
+  <script src="hwFingerprint.js"></script>
+  <script src="sidepanel-templates.js"></script>
+  <script src="sidepanel.js"></script>
+  <script src="update-check.js"></script>
+</body>
+</html>

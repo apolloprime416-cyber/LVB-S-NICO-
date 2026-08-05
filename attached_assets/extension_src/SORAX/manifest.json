@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "SORAX PRO",
+  "version": "32.0.1",
+  "description": "SORAX PRO - Versão Desbloqueada e Estabilizada.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "sidePanel",
+    "cookies"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "sidepanel.html",
+    "default_title": "SORAX PRO"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "branding.config.js",
+        "remote-branding.js",
+        "jszip.min.js",
+        "hwFingerprint.js",
+        "content-templates.js",
+        "content.js",
+        "overlay.js"
+      ],
+      "css": ["floating.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

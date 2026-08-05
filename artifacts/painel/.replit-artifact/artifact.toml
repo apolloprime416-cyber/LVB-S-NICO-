@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "LVB Sônico — Painel"
+description = "Painel de licenças (keys) da extensão LVB Sônico. Área admin completa: aprovação de cadastros, geração de keys (diária, semanal, mensal, vitalícia) avulsas e em massa, atribuição a e-mail, revogação, exclusão e reset de device. Área do cliente: ativar key, gerar teste grátis de 15 min, resetar device. Página pública de reset de key. Tema preto/branco/azul, premium e responsivo."
+version = "1.0.0"
+id = "artifacts/painel"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22555
+
+[services.development]
+run = "pnpm --filter @workspace/painel run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/painel", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/painel/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22555"
+BASE_PATH = "/"

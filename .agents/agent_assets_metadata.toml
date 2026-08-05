@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "C6qKUPv6FvvmMj0NYRlE6"
+uri = "file://extension/lvb-sonico-extensao.zip"
+type = "unspecified"
+title = "Extensão LVB Sônico (rebrandeada + key gate)"
+description = "Extensão Chrome rebrandeada: tema preto/azul, ícones Sonic 3D, sem emojis, e validação de key conectada ao painel LVB Sônico."

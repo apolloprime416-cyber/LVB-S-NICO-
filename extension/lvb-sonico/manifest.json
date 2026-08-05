@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "LVB Sônico",
+  "version": "32.0.1",
+  "description": "LVB Sônico — Assistente premium com licenciamento por key.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "sidePanel",
+    "cookies"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "sidepanel.html",
+    "default_title": "LVB Sônico"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "branding.config.js",
+        "remote-branding.js",
+        "jszip.min.js",
+        "hwFingerprint.js",
+        "lvb-license.js",
+        "content-templates.js",
+        "content.js",
+        "overlay.js"
+      ],
+      "css": [
+        "floating.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

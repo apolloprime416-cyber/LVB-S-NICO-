@@ -1,0 +1,2 @@
+- [Orval zod codegen patch](orval-zod-v4.md) — after every codegen run, the generated api-zod import must be re-pointed to `zod/v4` or typecheck fails.
+- [Session store table](session-store.md) — connect-pg-simple can't auto-create its table under the esbuild bundle; `user_sessions` was created manually.
