@@ -58,6 +58,8 @@ function normalizePromptImageUrl(url) {
 window.__tsSidebarCollapsed = window.__tsSidebarCollapsed || false;
 
 function injectSidebarCollapseFloatingButton() {
+  // Apenas na janela principal: evita setas duplicadas dentro de iframes
+  if (window.top !== window) return;
   if (document.getElementById("ts-sidebar-collapse-floating-button")) {
     return;
   }
@@ -86,7 +88,7 @@ function injectSidebarCollapseFloatingButton() {
     "border: none !important",
     "border-radius: 12px 0 0 12px !important",
     "cursor: pointer !important",
-    "background: #C84CFF !important",
+    "background: #3B82F6 !important",
     "color: #ffffff !important",
     "box-shadow: -4px 4px 14px rgba(0, 0, 0, 0.18) !important",
     "font-size: 16px !important",

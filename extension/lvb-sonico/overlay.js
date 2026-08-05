@@ -10,6 +10,10 @@
   if (window.__tsOverlayInjected) return;
   window.__tsOverlayInjected = true;
 
+  // Apenas na janela principal: evita painel/launcher duplicados em iframes
+  // e toggles múltiplos (TS_TOGGLE_OVERLAY chega a todos os frames da aba).
+  if (window.top !== window) return;
+
   if (typeof window.TS_DEBUG === "undefined") window.TS_DEBUG = false;
   const tsDebug = (...args) => { if (window.TS_DEBUG) console.log(...args); };
 

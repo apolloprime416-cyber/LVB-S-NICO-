@@ -2524,8 +2524,8 @@ licenseKey = key;
   (async function init() {
     deviceId = await getDeviceId();
     chrome.storage.local.get(["ql_dark_mode"], r => {
-      // Light mode is default. Only switch to dark if user explicitly saved dark mode preference.
-      const savedDark = r.ql_dark_mode === true;
+      // Dark mode is default. Only switch to light if user explicitly saved light mode preference.
+      const savedDark = r.ql_dark_mode !== false;
       document.body.classList.toggle('sp-light', !savedDark);
       syncThemeButton();
     });
