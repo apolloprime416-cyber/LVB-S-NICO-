@@ -23,7 +23,7 @@
   let spAttachedFiles = [];
   let spActiveTab = 'prompt';
   let spChatHistory = [];
-  let licenseKey = "PRO-VITALICIO";
+  let licenseKey = null;
   let licenseType = null;
   let licenseLifetime = false;
   const SP_MAX_FILES = 15;
@@ -39,7 +39,7 @@
     {
       id: 'builtin_accessibility',
       builtin: true,
-      icon: '♿',
+      icon: '◈',
       name: 'Accessibility Review',
       description: 'Audita acessibilidade (WCAG 2.1 AA)',
       prefix: '/skill:accessibility',
@@ -48,7 +48,7 @@
     {
       id: 'builtin_redesign',
       builtin: true,
-      icon: '🎨',
+      icon: '✦',
       name: 'Redesign',
       description: 'Refina o design mantendo a funcionalidade',
       prefix: '/skill:redesign',
@@ -57,7 +57,7 @@
     {
       id: 'builtin_seo_review',
       builtin: true,
-      icon: '🔍',
+      icon: '◎',
       name: 'SEO Review',
       description: 'Auditoria técnica e on-page de SEO',
       prefix: '/skill:seo-review',
@@ -66,7 +66,7 @@
     {
       id: 'builtin_video_creator',
       builtin: true,
-      icon: '🎬',
+      icon: '▶',
       name: 'Video Creator',
       description: 'Gera vídeos curtos para o projeto',
       prefix: '/skill:video-creator',
@@ -75,7 +75,7 @@
     {
       id: 'builtin_skill_creator',
       builtin: true,
-      icon: '🧩',
+      icon: '◆',
       name: 'Skill Creator',
       description: 'Cria uma nova skill reutilizável',
       content: 'Me ajude a criar uma nova skill reutilizável para o Lovable. Faça as perguntas necessárias para entender: (1) qual tarefa específica essa skill resolve, (2) quando ela deve ser acionada, (3) qual o output esperado, (4) restrições/convenções do projeto que precisam ser seguidas. Em seguida, gere o prompt final da skill com nome, descrição curta (uma linha, focada em quando usar) e corpo do prompt pronto para colar.'
@@ -633,7 +633,8 @@ const logoutBtn = e.target.closest('.sp-logout-btn');
         expiresAt = null;
         licenseStatus = null;
         sessionId = null;
-        showMainUI();
+        licenseKey = null;
+        showLicenseGate();
       }
     );
 
@@ -985,7 +986,7 @@ licenseKey = key;
   function bindSkillsListEvents() {
     var newBtn = document.getElementById('sp-skill-new-btn');
     if (newBtn) newBtn.addEventListener('click', function() {
-      spSkillFormState = { id: '', name: '', description: '', icon: '⚡', content: '' };
+      spSkillFormState = { id: '', name: '', description: '', icon: '✦', content: '' };
       renderSkillsTab();
     });
     document.querySelectorAll('.sp-skill-edit').forEach(function(b) {
@@ -1023,7 +1024,7 @@ licenseKey = key;
       var id = document.getElementById('sp-skill-id').value;
       var name = document.getElementById('sp-skill-name').value.trim();
       var desc = document.getElementById('sp-skill-desc').value.trim();
-      var icon = document.getElementById('sp-skill-icon').value.trim() || '⚡';
+      var icon = document.getElementById('sp-skill-icon').value.trim() || '✦';
       var content = document.getElementById('sp-skill-content').value.trim();
       if (!name) { alert('Nome é obrigatório'); return; }
       if (!content) { alert('Conteúdo do prompt é obrigatório'); return; }
@@ -1049,7 +1050,7 @@ licenseKey = key;
     var box = document.getElementById('sp-active-skill');
     if (!box) return;
     if (!spActiveSkill) { box.style.display = 'none'; box.innerHTML = ''; return; }
-    var icon = spActiveSkill.icon || '⚡';
+    var icon = spActiveSkill.icon || '✦';
     var name = (spActiveSkill.name || 'Skill').replace(/</g, '&lt;');
     box.style.display = '';
     box.innerHTML =
@@ -1161,7 +1162,7 @@ licenseKey = key;
       document.body.appendChild(spSkillAcEl);
     }
     spSkillAcEl.innerHTML = skills.map(function(s, i) {
-      var icon = s.icon || '⚡';
+      var icon = s.icon || '✦';
       var name = (s.name || '').replace(/</g, '&lt;');
       var desc = (s.description || '').replace(/</g, '&lt;');
       return '<div class="sp-skill-ac-item' + (i === spSkillAcActive ? ' active' : '') + '" data-idx="' + i + '" ' +
@@ -2561,13 +2562,40 @@ sessionId = data.session_id || sessionId;
               // updateCountdown();
             } else {
               chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"]);
-              showMainUI();
+              showLicenseGate();
               if(data.reason === 'device_conflict') setTimeout(() => showAlert('Acesso Negado', data.message), 500);
             }
           } catch(e) {}
+        } else {
+          // Flag válida sem chave armazenada: estado inconsistente, exigir key
+          chrome.storage.local.remove(["ql_license_valid"]);
+          showLicenseGate();
         }
       } else {
-        showMainUI();
+        showLicenseGate();
+      }
+    });
+
+    // Sincroniza ativação/desativação entre o painel lateral e o chat flutuante
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if(area !== 'local' || !changes.ql_license_valid) return;
+      const nowValid = changes.ql_license_valid.newValue === true;
+      const wasValid = changes.ql_license_valid.oldValue === true;
+      if(nowValid === wasValid) return;
+      if(nowValid) {
+        chrome.storage.local.get(["ql_license_key","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status","ql_license_type","ql_license_lifetime","ql_session_id"], (res) => {
+          licenseKey = res.ql_license_key || null;
+          licenseType = res.ql_license_type || 'paid';
+          licenseLifetime = res.ql_license_lifetime || false;
+          userName = res.ql_user_name || null;
+          expiresAt = res.ql_expires_at || null;
+          licenseStatus = res.ql_license_status || null;
+          sessionId = res.ql_session_id || null;
+          showMainUI();
+        });
+      } else {
+        licenseKey = null; sessionId = null;
+        showLicenseGate();
       }
     });
   })();

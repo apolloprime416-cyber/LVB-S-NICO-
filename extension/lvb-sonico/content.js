@@ -538,7 +538,7 @@ let qlDeviceId = null;
 let qlShieldActive = false;
 let qlActiveTab = 'prompt';
 let qlChatHistory = [];
-let qLicenseKey = "PRO-VITALICIO";
+let qLicenseKey = null;
 let qLicenseType = null;
 let qLicenseLifetime = false;
 const QL_HISTORY_KEY = 'ql_chat_history';
@@ -615,21 +615,51 @@ function _buildFloatingUI(){
           } else if(data.reason === "device_conflict") {
             chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"]);
             const b = document.getElementById("ql-floating");
-            if(b) showMainUI(b);
+            if(b) showLicenseGate(b);
             setTimeout(() => showCustomAlert("Acesso Negado", data.message), 500);
           } else {
             chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"]);
             const b = document.getElementById("ql-floating");
-            if(b) showMainUI(b);
+            if(b) showLicenseGate(b);
           }
         }).catch(() => {});
+      } else {
+        // Flag válida sem chave armazenada: estado inconsistente, exigir key
+        chrome.storage.local.remove(["ql_license_valid"]);
+        showLicenseGate(box);
       }
     } else {
-      showMainUI(box);
+      showLicenseGate(box);
     }
 
     setupDrag();
     setupResize();
+  });
+
+  // Sincroniza ativação/desativação entre o chat flutuante e o painel lateral
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if(area !== 'local' || !changes.ql_license_valid) return;
+    const nowValid = changes.ql_license_valid.newValue === true;
+    const wasValid = changes.ql_license_valid.oldValue === true;
+    if(nowValid === wasValid) return;
+    const b = document.getElementById("ql-floating");
+    if(!b) return;
+    if(nowValid) {
+      chrome.storage.local.get(["ql_license_key","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status","ql_license_type","ql_license_lifetime","ql_session_id"], (res) => {
+        qlUserName = res.ql_user_name || null;
+        qlExpiresAt = res.ql_expires_at || null;
+        qlActivatedAt = res.ql_activated_at || null;
+        qLicenseStatus = res.ql_license_status || null;
+        qLicenseKey = res.ql_license_key || null;
+        qLicenseType = res.ql_license_type || 'paid';
+        qLicenseLifetime = res.ql_license_lifetime || false;
+        qlSessionId = res.ql_session_id || null;
+        showMainUI(b);
+      });
+    } else {
+      qLicenseKey = null; qlSessionId = null;
+      showLicenseGate(b);
+    }
   });
 }
 
@@ -773,8 +803,8 @@ function showMainUI(box){
       logoutBtn.addEventListener("click", () => {
         if(qlHeartbeatInterval) clearInterval(qlHeartbeatInterval);
         chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"], () => {
-          qlUserName = null; qlExpiresAt = null; qlActivatedAt = null; qLicenseStatus = null; qlSessionId = null;
-          showMainUI(box);
+          qlUserName = null; qlExpiresAt = null; qlActivatedAt = null; qLicenseStatus = null; qlSessionId = null; qLicenseKey = null;
+          showLicenseGate(box);
         });
       });
     }
@@ -1281,7 +1311,7 @@ function startHeartbeat(licenseKey){
         const msg = data.reason === "device_conflict" ? data.message : null;
         chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"], () => {
           const box = document.getElementById("ql-floating");
-          if(box) showMainUI(box);
+          if(box) showLicenseGate(box);
           if(msg) setTimeout(() => showCustomAlert("Acesso Negado", msg), 500);
         });
         return;
@@ -1348,7 +1378,7 @@ function handleLicenseExpired(){
       setTimeout(() => {
         overlay.remove();
         chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_license_status"], () => {
-          if(box) showMainUI(box);
+          if(box) showLicenseGate(box);
         });
       }, 300);
     });
@@ -1372,7 +1402,7 @@ async function showPaymentUI(box, preselectedPkg){
     backBtn.addEventListener("click", () => {
       chrome.storage.local.get(["ql_license_valid"], (res) => {
         if(res.ql_license_valid) showMainUI(box);
-        else showMainUI(box);
+        else showLicenseGate(box);
       });
     });
   }

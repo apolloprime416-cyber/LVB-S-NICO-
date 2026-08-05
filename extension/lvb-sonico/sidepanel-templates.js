@@ -402,7 +402,7 @@ function spTemplateSkillsEmpty() {
 }
 
 function spTemplateSkillCard(skill) {
-  var icon = skill.icon || '⚡';
+  var icon = skill.icon || '✦';
   var name = spEscapeHtml(skill.name || 'Sem nome');
   var desc = spEscapeHtml(skill.description || '');
   var preview = spEscapeHtml((skill.content || '').substring(0, 120));
@@ -450,7 +450,7 @@ function spTemplateSkillsList(skills) {
 }
 
 function spTemplateSkillForm(skill) {
-  skill = skill || { id: '', name: '', description: '', icon: '⚡', content: '' };
+  skill = skill || { id: '', name: '', description: '', icon: '✦', content: '' };
   var isEdit = !!skill.id;
   return '<div class="sp-skill-form">' +
     '<div class="sp-skill-form-head">' +
@@ -461,7 +461,7 @@ function spTemplateSkillForm(skill) {
     '<div class="sp-skill-field-row">' +
       '<div class="sp-skill-field" style="flex:0 0 70px">' +
         '<label>Ícone</label>' +
-        '<input type="text" id="sp-skill-icon" maxlength="2" value="' + spEscapeHtml(skill.icon || '⚡') + '" />' +
+        '<input type="text" id="sp-skill-icon" maxlength="2" value="' + spEscapeHtml(skill.icon || '✦') + '" />' +
       '</div>' +
       '<div class="sp-skill-field" style="flex:1">' +
         '<label>Nome *</label>' +
@@ -491,7 +491,7 @@ function spTemplateSkillsPicker(skills) {
   var user = skills.filter(function(s){ return !s.builtin; });
   function renderItem(s) {
     return '<button class="sp-skills-picker-item" data-skill-id="' + spEscapeHtml(s.id) + '">' +
-      '<span class="sp-skills-picker-icon">' + spEscapeHtml(s.icon || '⚡') + '</span>' +
+      '<span class="sp-skills-picker-icon">' + spEscapeHtml(s.icon || '✦') + '</span>' +
       '<span class="sp-skills-picker-name">' + spEscapeHtml(s.name) + '</span>' +
     '</button>';
   }

@@ -461,7 +461,7 @@
     return {
       id: s.id || prefix,
       label: name,
-      icon: s.icon || "⚡",
+      icon: s.icon || "✦",
       description: s.description || "",
       prefix: prefix,
       content: s.content || "",
@@ -794,7 +794,7 @@
       badge.id = SKILL_BADGE_ID;
       document.body.appendChild(badge);
     }
-    const icon = String(popupSelectedSkill.icon || "⚡");
+    const icon = String(popupSelectedSkill.icon || "✦");
     const isSvg = icon.trim().startsWith("<svg");
     const iconHtml = isSvg ? icon : escapeHtml(icon);
     const name = escapeHtml(popupSelectedSkill.label || popupSelectedSkill.name || "Skill");
@@ -1268,7 +1268,7 @@
     sub.innerHTML = list.length
       ? list.map((t, i) =>
           `<button class="ts-fab-item" data-prompt-index="${i}" style="animation-delay:${i * 25}ms" title="${escapeHtml(t.label)}">` +
-            `<span class="ts-fab-circle">${(function(ic){ic=String(ic||"⚡");return ic.trim().charAt(0)==="<"?ic:escapeHtml(ic);})(t.icon)}</span>` +
+            `<span class="ts-fab-circle">${(function(ic){ic=String(ic||"✦");return ic.trim().charAt(0)==="<"?ic:escapeHtml(ic);})(t.icon)}</span>` +
             `<span class="ts-fab-label">${escapeHtml(t.label)}</span>` +
           `</button>`
         ).join("")
@@ -2270,8 +2270,8 @@
       }
       .ts-slash-skills-textarea-active {
         box-shadow:
-          0 0 0 1px rgba(124, 58, 237, 0.55),
-          0 0 18px rgba(124, 58, 237, 0.22) !important;
+          0 0 0 1px rgba(var(--ts-brand-primary-rgb), 0.55),
+          0 0 18px rgba(var(--ts-brand-primary-rgb), 0.22) !important;
         border-radius: 12px !important;
         transition: box-shadow .18s ease !important;
       }
@@ -2285,7 +2285,7 @@
         background: rgba(18, 18, 24, 0.96);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(124, 58, 237, 0.45);
+        border: 1px solid rgba(var(--ts-brand-primary-rgb), 0.45);
         border-radius: 14px;
         box-shadow: 0 18px 48px rgba(0,0,0,.45), 0 0 0 1px rgba(59,130,246,.25);
         color: #f5f5f7;
@@ -2324,7 +2324,7 @@
       }
       #${SLASH_ID} .ts-slash-item:hover,
       #${SLASH_ID} .ts-slash-item.ts-active {
-        background: rgba(124, 58, 237, 0.22);
+        background: rgba(var(--ts-brand-primary-rgb), 0.22);
       }
       #${SLASH_ID} .ts-slash-icon {
         width: 26px; height: 26px; border-radius: 8px;
@@ -2428,7 +2428,7 @@
     if (slashState.index >= items.length) slashState.index = 0;
     list.innerHTML = items.map((t, i) => {
       const active = i === slashState.index ? " ts-active" : "";
-      const icon = String(t.icon || "⚡");
+      const icon = String(t.icon || "✦");
       const isSvg = icon.trim().startsWith("<svg");
       const iconHtml = isSvg ? icon : escapeHtml(icon);
       const preview = escapeHtml(String(t.prefix || t.description || "").slice(0, 80));
