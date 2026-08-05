@@ -63,6 +63,7 @@ function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/resetar-key" component={ResetKey} />
+      <Route path="/resetar-device" component={ResetKey} />
 
       <Route path="/painel">
         <ProtectedRoute component={Painel} roleRequired="client" />

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
-import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus } from 'lucide-react';
+import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function PainelClient() {
@@ -21,6 +21,14 @@ export default function PainelClient() {
 
   const [activationCode, setActivationCode] = useState('');
   const [isActivateOpen, setIsActivateOpen] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedKey(code);
+    toast({ title: 'Key copiada', description: code });
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   const hasPaidKeys = keys?.some(k => k.plan !== 'trial');
 
@@ -158,10 +166,18 @@ export default function PainelClient() {
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <CardHeader className="pb-3 border-b border-white/5">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="bg-white/5 font-mono text-xs tracking-wider border-white/10">
-                    {key.code.substring(0, 8)}...
-                  </Badge>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(key.code)}
+                    title="Clique para copiar a key"
+                    className="group flex items-center gap-1.5 min-w-0 rounded-md border border-white/10 bg-white/5 px-2 py-1 font-mono text-xs tracking-wider text-foreground hover:border-primary/40 hover:bg-primary/10 transition-colors"
+                  >
+                    <span className="truncate">{key.code}</span>
+                    {copiedKey === key.code
+                      ? <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                      : <Copy className="w-3.5 h-3.5 shrink-0 text-muted-foreground group-hover:text-primary" />}
+                  </button>
                   <Badge 
                     className={
                       key.status === 'active' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
