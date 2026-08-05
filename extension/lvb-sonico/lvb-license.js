@@ -3,7 +3,7 @@
 // legado usado internamente pela extensão.
 (function () {
   // ATENÇÃO: após publicar o painel, troque para o domínio de produção.
-  const API_BASE = "https://4a6639de-3136-4508-ac9c-5dba41361e04-00-bvdvhuas8xh1.riker.replit.dev";
+  const API_BASE = "https://lvbsonic.replit.app";
 
   const VALIDATE_ENDPOINT = API_BASE + "/api/public/validate";
   const RESET_PAGE = API_BASE + "/resetar-key";
