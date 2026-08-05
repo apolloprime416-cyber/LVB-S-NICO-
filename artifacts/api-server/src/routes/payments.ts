@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, sql, isNull, or, lt } from "drizzle-orm";
+import { and, eq, desc, isNull, or, lt } from "drizzle-orm";
 import { db, paymentsTable, licenseKeysTable } from "@workspace/db";
 import { requireClient } from "../middlewares/auth";
 import { generateKeyCode, serializeKey } from "../lib/keys";
@@ -25,8 +25,11 @@ const PROVIDER_POLL_INTERVAL_MS = 60 * 1000;
  * Returns true only for the single caller that wins the 60s window —
  * concurrent pollers and webhook handlers all share this guard.
  */
-async function leaseProviderCheck(paymentId: string): Promise<boolean> {
-  const cutoff = new Date(Date.now() - PROVIDER_POLL_INTERVAL_MS);
+async function leaseProviderCheck(
+  paymentId: string,
+  intervalMs: number = PROVIDER_POLL_INTERVAL_MS,
+): Promise<boolean> {
+  const cutoff = new Date(Date.now() - intervalMs);
   const claimed = await db
     .update(paymentsTable)
     .set({ lastCheckedAt: new Date() })
@@ -79,8 +82,13 @@ async function settlePayment(
   }
 
   // Bind fulfillment to the exact expected amount and transaction id.
+  // PushinPay returns the id UPPERCASE on consult but lowercase on create —
+  // compare case-insensitively.
   const paidValue = Number(tx.value);
-  if (String(tx.id) !== payment.providerId || paidValue !== payment.valueCents) {
+  if (
+    String(tx.id).toLowerCase() !== payment.providerId.toLowerCase() ||
+    paidValue !== payment.valueCents
+  ) {
     logger.error(
       { paymentId, expected: payment.valueCents, got: tx.value, txId: tx.id },
       "Pagamento com valor/transação divergente — não será liberado",
@@ -139,11 +147,14 @@ async function settlePayment(
  * Lease-guarded provider check: queries PushinPay at most once per minute
  * per transaction and settles the payment when it is paid.
  */
-async function checkWithProvider(payment: {
-  id: string;
-  providerId: string;
-}): Promise<{ status: string; keyId: string | null } | null> {
-  const leased = await leaseProviderCheck(payment.id);
+async function checkWithProvider(
+  payment: {
+    id: string;
+    providerId: string;
+  },
+  intervalMs: number = PROVIDER_POLL_INTERVAL_MS,
+): Promise<{ status: string; keyId: string | null } | null> {
+  const leased = await leaseProviderCheck(payment.id, intervalMs);
   if (!leased) return null;
   const tx = await getTransaction(payment.providerId);
   if (!tx) return null;
@@ -194,7 +205,7 @@ router.post("/me/payments", requireClient, async (req, res): Promise<void> => {
     const [payment] = await db
       .insert(paymentsTable)
       .values({
-        providerId: String(tx.id),
+        providerId: String(tx.id).toLowerCase(),
         plan,
         valueCents: expected,
         status: "pending",
@@ -219,6 +230,27 @@ router.post("/me/payments", requireClient, async (req, res): Promise<void> => {
       error: "Não foi possível gerar a cobrança PIX. Tente novamente.",
     });
   }
+});
+
+/** Recent payments of the logged-in client (used to resume a pending PIX). */
+router.get("/me/payments", requireClient, async (req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(paymentsTable)
+    .where(eq(paymentsTable.userId, req.currentUser!.id))
+    .orderBy(desc(paymentsTable.createdAt))
+    .limit(10);
+  res.json(
+    rows.map((p) => ({
+      id: p.id,
+      plan: p.plan,
+      priceCents: p.valueCents,
+      status: p.status,
+      qrCode: p.qrCode,
+      qrCodeBase64: p.qrCodeBase64,
+      createdAt: p.createdAt.toISOString(),
+    })),
+  );
 });
 
 /**
@@ -274,6 +306,64 @@ router.get(
 );
 
 /**
+ * Manual "Já fiz o pagamento" check — verifies immediately on PushinPay
+ * (with a shorter 20s lease so the button feels responsive without
+ * violating the provider's query limits).
+ */
+router.post(
+  "/me/payments/:id/check",
+  requireClient,
+  async (req, res): Promise<void> => {
+    const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const [payment] = await db
+      .select()
+      .from(paymentsTable)
+      .where(
+        and(
+          eq(paymentsTable.id, raw),
+          eq(paymentsTable.userId, req.currentUser!.id),
+        ),
+      );
+    if (!payment) {
+      res.status(404).json({ error: "Pagamento não encontrado" });
+      return;
+    }
+
+    let status = payment.status;
+    let keyId = payment.keyId;
+    let checked = false;
+
+    if (status === "pending") {
+      try {
+        const settled = await checkWithProvider(payment, 20 * 1000);
+        if (settled) {
+          checked = true;
+          status = settled.status === "unknown" ? status : settled.status;
+          keyId = settled.keyId ?? keyId;
+        }
+      } catch (err) {
+        logger.error({ err }, "Falha ao consultar PushinPay (manual)");
+        res.status(502).json({
+          error: "Não foi possível consultar o pagamento agora. Tente de novo em instantes.",
+        });
+        return;
+      }
+    }
+
+    let key = null;
+    if (keyId) {
+      const [row] = await db
+        .select()
+        .from(licenseKeysTable)
+        .where(eq(licenseKeysTable.id, keyId));
+      if (row) key = serializeKey(row);
+    }
+
+    res.json({ id: payment.id, plan: payment.plan, status, key, checked });
+  },
+);
+
+/**
  * PushinPay webhook — active 24/7. The payload is never trusted alone:
  * the status and amount are re-verified against the PushinPay API before
  * any key is issued. Processing completes BEFORE the 200 ack, so provider
@@ -284,7 +374,9 @@ router.get(
 router.post(
   "/public/pushinpay-webhook",
   async (req, res): Promise<void> => {
-    const providerId = String(req.body?.id ?? req.body?.transaction_id ?? "");
+    const providerId = String(
+      req.body?.id ?? req.body?.transaction_id ?? "",
+    ).toLowerCase();
     if (!providerId) {
       res.status(200).json({ ok: true }); // malformed — nothing to retry
       return;

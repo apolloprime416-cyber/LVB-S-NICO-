@@ -47,6 +47,23 @@ export default function Plans() {
       .then((r) => (r.ok ? r.json() : []))
       .then(setPlans)
       .catch(() => setPlans([]));
+    // Resume a pending PIX (e.g. user closed the dialog or reloaded the page)
+    fetch('/api/me/payments', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: (PaymentInfo & { createdAt: string })[]) => {
+        const pending = Array.isArray(list)
+          ? list.find(
+              (p) =>
+                p.status === 'pending' &&
+                Date.now() - new Date(p.createdAt).getTime() < 60 * 60 * 1000,
+            )
+          : null;
+        if (pending) {
+          setPayment(pending);
+          startPolling(pending.id);
+        }
+      })
+      .catch(() => {});
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -102,6 +119,48 @@ export default function Plans() {
       toast({ variant: 'destructive', title: 'Erro', description: 'Falha de conexão. Tente novamente.' });
     } finally {
       setBuying(null);
+    }
+  };
+
+  const [checking, setChecking] = useState(false);
+
+  const handlePaidClick = async () => {
+    if (!payment) return;
+    setChecking(true);
+    try {
+      const res = await fetch(`/api/me/payments/${payment.id}/check`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ variant: 'destructive', title: 'Erro', description: data?.error || 'Não foi possível verificar agora.' });
+        return;
+      }
+      if (data.status === 'paid') {
+        if (pollRef.current) clearInterval(pollRef.current);
+        setPaid(true);
+        toast({
+          title: 'Pagamento confirmado',
+          description: data.key
+            ? `Sua key ${data.key.code} foi gerada. Redirecionando...`
+            : 'Sua key foi gerada. Redirecionando...',
+        });
+        setTimeout(() => navigate('/painel'), 2000);
+      } else if (data.status === 'canceled' || data.status === 'expired') {
+        if (pollRef.current) clearInterval(pollRef.current);
+        toast({ variant: 'destructive', title: 'Pagamento não concluído', description: 'A cobrança foi cancelada ou expirou. Gere uma nova.' });
+        setPayment(null);
+      } else {
+        toast({
+          title: 'Ainda não identificado',
+          description: 'O pagamento ainda não apareceu na PushinPay. Aguarde alguns segundos e tente de novo.',
+        });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Falha de conexão. Tente novamente.' });
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -222,6 +281,14 @@ export default function Plans() {
               <Button variant="secondary" className="w-full" onClick={handleCopy} disabled={!payment?.qrCode}>
                 {copied ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Copy className="w-4 h-4 mr-2" />}
                 {copied ? 'Copiado' : 'Copiar código PIX'}
+              </Button>
+              <Button
+                className="w-full font-bold bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90"
+                onClick={handlePaidClick}
+                disabled={checking}
+              >
+                {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Já fiz o pagamento
               </Button>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
