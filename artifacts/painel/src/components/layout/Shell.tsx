@@ -8,8 +8,10 @@ import {
   Users, 
   Key, 
   Menu,
-  ShieldAlert
+  ShieldAlert,
+  Download
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Logo } from '@/components/ui/logo';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -20,8 +22,30 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
 
   const isAdmin = session?.role === 'admin';
+
+  const handleDownloadExtension = async () => {
+    setOpen(false);
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/me/extension', { credentials: 'include' });
+      const info = res.ok ? await res.json() : null;
+      if (!info?.available) {
+        toast({ variant: 'destructive', title: 'Indisponível', description: 'Nenhum arquivo de extensão foi publicado ainda.' });
+      } else if (!info.unlocked) {
+        toast({ variant: 'destructive', title: 'Download bloqueado', description: 'Adquira e ative uma key para liberar o download da extensão.' });
+      } else {
+        window.location.href = '/api/me/extension/download';
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível verificar o arquivo. Tente novamente.' });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const navItems = isAdmin ? [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -61,6 +85,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
           );
         })}
       </div>
+      {!isAdmin && (
+        <div className="px-4 pb-4">
+          <Button
+            className="w-full h-11 font-bold tracking-wide uppercase text-xs bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg shadow-primary/30 animate-in fade-in"
+            onClick={handleDownloadExtension}
+            disabled={downloading}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Baixar Extensão
+          </Button>
+        </div>
+      )}
     </>
   );
 
