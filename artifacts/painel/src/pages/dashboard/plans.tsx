@@ -290,9 +290,14 @@ export default function Plans() {
                 {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
                 Já fiz o pagamento
               </Button>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Aguardando pagamento...
+              <div className="flex flex-col items-center gap-1 text-center">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Aguardando aprovação
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Assim que o pagamento for confirmado, sua key será entregue automaticamente.
+                </p>
               </div>
             </div>
           )}
