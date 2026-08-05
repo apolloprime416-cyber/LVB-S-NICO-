@@ -68,6 +68,20 @@ body.sp-light {
 }
 body { animation: sp-fade-in 0.4s ease-out; }
 
+.sp-banner {
+  flex-shrink: 0;
+  background: var(--ql-bg);
+  border-bottom: 1px solid var(--ql-border);
+  line-height: 0;
+}
+.sp-banner img {
+  width: 100%;
+  height: auto;
+  max-height: 120px;
+  object-fit: cover;
+  display: block;
+}
+
 .sp-header {
   padding: 14px 16px;
   background: var(--ql-bg-elevated);
@@ -214,7 +228,7 @@ body { animation: sp-fade-in 0.4s ease-out; }
 .sp-alert-message { font-size: 12px; color: var(--ql-text-secondary); margin-bottom: 16px; line-height: 1.5; }
 .sp-alert-ok { padding: 8px 28px; border: none; border-radius: var(--ql-radius-sm); background: linear-gradient(135deg, var(--ql-accent), var(--ts-brand-primary-hover)); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 
-.sp-notif-panel { position: fixed; top: 52px; right: 8px; left: 8px; background: var(--ql-bg-surface); border: 1px solid var(--ql-border); border-radius: var(--ql-radius); box-shadow: 0 16px 48px -12px rgba(0,0,0,0.5); z-index: 50; max-height: 300px; overflow-y: auto; animation: sp-slide-down 0.2s ease; }
+.sp-notif-panel { position: fixed; top: 172px; right: 8px; left: 8px; background: var(--ql-bg-surface); border: 1px solid var(--ql-border); border-radius: var(--ql-radius); box-shadow: 0 16px 48px -12px rgba(0,0,0,0.5); z-index: 50; max-height: 300px; overflow-y: auto; animation: sp-slide-down 0.2s ease; }
 @keyframes sp-slide-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 .sp-notif-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--ql-border); font-size: 13px; font-weight: 700; }
 .sp-notif-close { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--ql-text-muted); padding: 4px 8px; border-radius: 6px; }
