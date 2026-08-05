@@ -9,7 +9,8 @@ import {
   Key, 
   Menu,
   ShieldAlert,
-  Download
+  Download,
+  ShoppingCart
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -54,6 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     { href: '/admin/keys', label: 'Keys', icon: Key },
   ] : [
     { href: '/painel', label: 'Minhas Keys', icon: Key },
+    { href: '/planos', label: 'Planos e Preços', icon: ShoppingCart },
   ];
 
   const handleLogout = () => {
@@ -173,6 +175,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-4 md:p-8 animate-in fade-in zoom-in-95 duration-300">
+          <img
+            src={`${import.meta.env.BASE_URL}brand/banner.png`}
+            alt="Sejam bem-vindos — LVB Sônico"
+            className="w-full h-auto rounded-xl border border-white/10 shadow-lg shadow-primary/10 mb-6"
+          />
           {children}
         </div>
       </main>

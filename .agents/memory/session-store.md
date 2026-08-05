@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS "user_sessions" ("sid" varchar PRIMARY KEY, "sess" js
 CREATE INDEX IF NOT EXISTS "IDX_user_sessions_expire" ON "user_sessions" ("expire");
 ```
 
+Note: manual creation is only needed in development — Replit's Publish flow diffs dev vs prod schema and applies it to production automatically (never script prod migrations). `payments` table was also created manually in dev.
+
 Related: `drizzle-kit push` cannot run non-interactively here (prompts for the schema-vs-DB table conflict and dies without a TTY), so new tables (e.g. `extension_files`) were also created manually via psql — remember to create them in production too:
 
 ```sql
