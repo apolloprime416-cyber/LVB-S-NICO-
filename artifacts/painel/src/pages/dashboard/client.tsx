@@ -19,6 +19,7 @@ export default function PainelClient() {
   const activateMutation = useActivateKey();
   const resetDeviceMutation = useResetMyKeyDevice();
   const generateTrialMutation = useGenerateTrial();
+  const [activatingKeyId, setActivatingKeyId] = useState<string | null>(null);
 
   const updateCustomerMutation = useUpdateMyKeyCustomer();
 
@@ -94,6 +95,21 @@ export default function PainelClient() {
       onError: (err: any) => {
         toast({ variant: 'destructive', title: 'Erro na ativação', description: err.data?.error || 'Verifique o código e tente novamente.' });
       }
+    });
+  };
+
+  // One-click activation directly from the key card — no copy/paste needed
+  const handleDirectActivate = (code: string, keyId: string) => {
+    setActivatingKeyId(keyId);
+    activateMutation.mutate({ data: { code } }, {
+      onSuccess: () => {
+        toast({ title: '✓ Key ativada!', description: 'A contagem do plano começou agora.' });
+        queryClient.invalidateQueries({ queryKey: getGetMyKeysQueryKey() });
+      },
+      onError: (err: any) => {
+        toast({ variant: 'destructive', title: 'Erro ao ativar', description: err.data?.error || 'Tente novamente.' });
+      },
+      onSettled: () => setActivatingKeyId(null),
     });
   };
 
@@ -376,7 +392,19 @@ export default function PainelClient() {
                 </div>
               </CardContent>
               
-              <CardFooter className="pt-2 pb-4 border-t border-white/5">
+              <CardFooter className="pt-2 pb-4 border-t border-white/5 flex flex-col gap-2">
+                {/* One-click activate button for inactive keys */}
+                {key.status === 'inactive' && (
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90 font-semibold shadow-md shadow-primary/20"
+                    onClick={() => handleDirectActivate(key.code, key.id)}
+                    disabled={activatingKeyId === key.id}
+                  >
+                    {activatingKeyId === key.id
+                      ? <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Ativando...</>
+                      : <><Power className="w-3.5 h-3.5 mr-2" /> Ativar Agora</>}
+                  </Button>
+                )}
                 <Button 
                   variant="secondary" 
                   className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-foreground/80 hover:text-foreground"
