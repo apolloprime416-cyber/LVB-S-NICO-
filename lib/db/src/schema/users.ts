@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,8 @@ export const usersTable = pgTable("users", {
   status: text("status").notNull().default("pending"),
   // Second-factor code, only set for admin accounts
   twoFactorCode: text("two_factor_code"),
+  // Whether this manager account may create keys of any plan (admin-controlled)
+  canCreateKeys: boolean("can_create_keys").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -153,6 +153,21 @@ router.post("/admin/users/:id/password", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// Admin-only: promote a client to manager
+router.post("/admin/users/:id/promote", async (req, res): Promise<void> => {
+  const id = paramId(req);
+  const [updated] = await db
+    .update(usersTable)
+    .set({ role: "manager", status: "approved" })
+    .where(and(eq(usersTable.id, id), eq(usersTable.role, "client")))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Usuário não encontrado ou não é cliente" });
+    return;
+  }
+  res.json(serializeUser(updated, 0));
+});
+
 router.delete("/admin/users/:id", async (req, res): Promise<void> => {
   const id = paramId(req);
   await db.delete(licenseKeysTable).where(eq(licenseKeysTable.userId, id));
@@ -194,6 +209,15 @@ router.get("/admin/keys", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/keys", async (req, res): Promise<void> => {
+  // Managers need the canCreateKeys permission; admins always have it.
+  if (req.currentUser!.role === "manager") {
+    const [mgr] = await db.select().from(usersTable).where(eq(usersTable.id, req.currentUser!.id));
+    if (!mgr?.canCreateKeys) {
+      res.status(403).json({ error: "Permissão de gerar keys não habilitada para este gerente" });
+      return;
+    }
+  }
+
   const parsed = GenerateKeysBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -309,6 +333,25 @@ router.post("/admin/managers", async (req, res): Promise<void> => {
     })
     .returning();
   res.status(201).json(serializeUser(created!, 0));
+});
+
+// Toggle canCreateKeys permission for a manager
+router.patch("/admin/managers/:id/permissions", async (req, res): Promise<void> => {
+  const { canCreateKeys } = req.body as { canCreateKeys?: boolean };
+  if (typeof canCreateKeys !== "boolean") {
+    res.status(400).json({ error: "Campo canCreateKeys deve ser boolean" });
+    return;
+  }
+  const [updated] = await db
+    .update(usersTable)
+    .set({ canCreateKeys })
+    .where(and(eq(usersTable.id, paramId(req)), eq(usersTable.role, "manager")))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Gerente não encontrado" });
+    return;
+  }
+  res.json({ ok: true, canCreateKeys: updated.canCreateKeys });
 });
 
 router.delete("/admin/managers/:id", async (req, res): Promise<void> => {

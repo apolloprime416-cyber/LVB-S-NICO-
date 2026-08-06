@@ -47,7 +47,7 @@ export default function Login() {
       onSuccess: (res) => {
         if (res.status === 'authenticated') {
           queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
-          setLocation(res.user?.role === 'admin' ? '/admin' : '/painel');
+          setLocation(res.user?.role === 'admin' || res.user?.role === 'manager' ? '/admin' : '/painel');
         } else if (res.status === 'code_required') {
           setStep('code');
         } else if (res.status === 'pending') {
@@ -67,7 +67,7 @@ export default function Login() {
       onSuccess: (res) => {
         if (res.status === 'authenticated') {
           queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
-          setLocation(res.user?.role === 'admin' ? '/admin' : '/painel');
+          setLocation(res.user?.role === 'admin' || res.user?.role === 'manager' ? '/admin' : '/painel');
         }
       },
       onError: (err: any) => {

@@ -182,6 +182,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             src={`${import.meta.env.BASE_URL}brand/banner.png`}
             alt="Sejam bem-vindos — LVB Sônico"
             className="w-full h-auto rounded-xl border border-white/10 shadow-lg shadow-primary/10 mb-6"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           />
           {children}
         </div>
