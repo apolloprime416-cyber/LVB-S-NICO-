@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useGetAdminStats, useGetSession } from '@workspace/api-client-react';
+import PlansSection from '@/components/PlansSection';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +25,7 @@ function ExtensionFileCard() {
   const { toast } = useToast();
   const { data: session } = useGetSession();
   const isAdmin = session?.role === 'admin';
+  const isManager = session?.role === 'manager';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [info, setInfo] = useState<ExtensionInfo | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -109,6 +111,8 @@ function ExtensionFileCard() {
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useGetAdminStats();
+  const { data: session } = useGetSession();
+  const isManager = session?.role === 'manager';
   const [liveTime, setLiveTime] = useState(() => new Date());
 
   useEffect(() => {
@@ -290,6 +294,9 @@ export default function AdminDashboard() {
           <ExtensionFileCard />
         </TabsContent>
       </Tabs>
+
+      {/* ── Planos e Preços — visível para gerentes na página inicial ── */}
+      {isManager && <PlansSection />}
     </div>
   );
 }

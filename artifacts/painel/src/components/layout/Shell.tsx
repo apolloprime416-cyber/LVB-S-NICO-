@@ -10,7 +10,6 @@ import {
   Menu,
   ShieldAlert,
   Download,
-  ShoppingCart,
   Tag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -58,7 +57,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
     ...(isAdmin ? [{ href: '/admin/promocoes', label: 'Promoções', icon: Tag }] : []),
   ] : [
     { href: '/painel', label: 'Minhas Keys', icon: Key },
-    { href: '/planos', label: 'Planos e Preços', icon: ShoppingCart },
   ];
 
   const handleLogout = () => {

@@ -13,7 +13,6 @@ import AdminUsers from '@/pages/dashboard/users';
 import AdminKeys from '@/pages/dashboard/keys';
 import AdminPromotions from '@/pages/dashboard/promotions';
 import ResetKey from '@/pages/public/reset-key';
-import Plans from '@/pages/dashboard/plans';
 import { useGetSession, getGetSessionQueryKey } from '@workspace/api-client-react';
 import { Loader2 } from 'lucide-react';
 
@@ -72,7 +71,7 @@ function AppRouter() {
         <ProtectedRoute component={Painel} roleRequired="client" />
       </Route>
       <Route path="/planos">
-        <ProtectedRoute component={Plans} roleRequired={['client', 'manager']} />
+        <Redirect to="/painel" />
       </Route>
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} roleRequired={['admin', 'manager']} />

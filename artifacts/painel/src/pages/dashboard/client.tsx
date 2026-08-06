@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGetMyKeys, useActivateKey, useResetMyKeyDevice, useGenerateTrial, useUpdateMyKeyCustomer, getGetMyKeysQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
+import PlansSection from '@/components/PlansSection';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -416,6 +417,9 @@ export default function PainelClient() {
           ))}
         </div>
       )}
+
+      {/* ── Planos e Preços — sempre visível no início do painel ── */}
+      <PlansSection />
 
       <Dialog open={editKeyId !== null} onOpenChange={(o) => { if (!o) setEditKeyId(null); }}>
         <DialogContent className="glass-panel border-white/10 sm:max-w-[425px]">
