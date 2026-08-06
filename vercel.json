@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "node artifacts/api-server/build-vercel.mjs && BASE_PATH=/ PORT=5000 pnpm --filter @workspace/painel run build",
+  "outputDirectory": "artifacts/painel/dist/public",
+  "framework": null,
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ]
+}
