@@ -189,10 +189,20 @@ router.get("/admin/keys", async (req, res): Promise<void> => {
 
   const conditions = [];
   if (planFilter) conditions.push(eq(licenseKeysTable.plan, planFilter));
-  // status is computed for expired; filter inactive/active/revoked directly,
-  // and filter expired in-memory below.
   if (statusFilter && statusFilter !== "expired") {
     conditions.push(eq(licenseKeysTable.status, statusFilter));
+  }
+
+  // Managers without canCreateKeys permission only see keys THEY created.
+  // Managers with canCreateKeys (or admins) see all keys.
+  if (req.currentUser!.role === "manager") {
+    const [mgr] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, req.currentUser!.id));
+    if (!mgr?.canCreateKeys) {
+      conditions.push(eq(licenseKeysTable.createdById, req.currentUser!.id));
+    }
   }
 
   let rows = await db
@@ -251,12 +261,16 @@ router.post("/admin/keys", async (req, res): Promise<void> => {
     userEmail = user.email;
   }
 
+  // Always track who created the key so managers can filter their own
+  const createdById = req.currentUser!.id;
+
   const values = Array.from({ length: quantity }, () => ({
     code: generateKeyCode(),
     plan,
     status: "inactive" as const,
     userId,
     userEmail,
+    createdById,
   }));
 
   const created = await db.insert(licenseKeysTable).values(values).returning();

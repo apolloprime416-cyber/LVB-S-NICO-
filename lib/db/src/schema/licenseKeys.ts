@@ -11,6 +11,7 @@ export const licenseKeysTable = pgTable("license_keys", {
   status: text("status").notNull().default("inactive"),
   userId: uuid("user_id"),
   userEmail: text("user_email"),
+  createdById: uuid("created_by_id"),
   deviceFingerprint: text("device_fingerprint"),
   customerName: text("customer_name"),
   customerEmail: text("customer_email"),

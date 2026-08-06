@@ -43,6 +43,7 @@ export function serializeKey(row: LicenseKeyRow) {
     status: computeStatus(row),
     userId: row.userId ?? null,
     userEmail: row.userEmail ?? null,
+    createdById: row.createdById ?? null,
     deviceFingerprint: row.deviceFingerprint ?? null,
     customerName: row.customerName ?? null,
     customerEmail: row.customerEmail ?? null,
