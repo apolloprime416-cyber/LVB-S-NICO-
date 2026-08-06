@@ -1,0 +1,304 @@
+============================================================
+INSTRUCAO SUPER COMPLETA — SISTEMA DE LICENCAS "LVB SONICO"
+Prompt para recriar o sistema inteiro (site + painel + API +
+extensao Chrome + pagamentos PIX) 100% identico.
+============================================================
+
+Copie tudo abaixo e entregue para a IA / desenvolvedor.
+IMPORTANTE: nunca cole tokens ou senhas reais neste texto.
+Os segredos (token PushinPay, chave de sessao, endereco do
+banco) devem ser configurados apenas nas variaveis de
+ambiente da hospedagem.
+
+------------------------------------------------------------
+1. VISAO GERAL DO PRODUTO
+------------------------------------------------------------
+Construa um sistema completo de venda e controle de licencas
+(keys) para uma extensao do Chrome, com:
+
+- SITE/PAINEL (frontend web) com area publica, painel do
+  cliente e painel do administrador.
+- API (backend) que controla usuarios, keys, pagamentos PIX
+  e o arquivo da extensao para download.
+- EXTENSAO CHROME que so funciona com uma key valida,
+  validada online contra a API a cada abertura.
+- PAGAMENTOS via PIX usando o gateway PushinPay (criacao de
+  cobranca + confirmacao + entrega automatica da key).
+
+Identidade visual: nome "LVB Sonico", tema escuro
+(preto/grafite), branco e azul (#3B82F6 como cor primaria),
+visual "glass" (paineis translucidos com bordas brancas a
+10% de opacidade), SEM emojis em nenhum texto. Todo o texto
+do produto em portugues do Brasil. Logo: mascote azul
+(Sonic) usada como favicon do site e icone da extensao
+(16/32/48/128px).
+
+------------------------------------------------------------
+2. ARQUITETURA / TECNOLOGIAS
+------------------------------------------------------------
+Monorepo pnpm com workspaces:
+
+- artifacts/painel ......... frontend React 18 + Vite +
+  TypeScript + Tailwind + shadcn/ui (Radix), wouter para
+  rotas, TanStack Query para dados.
+- artifacts/api-server ..... backend Express 5 + TypeScript,
+  Drizzle ORM, sessoes com express-session +
+  connect-pg-simple (tabela user_sessions no Postgres).
+- lib/db ................... schema Drizzle compartilhado.
+- lib/api-spec ............. contrato OpenAPI (openapi.yaml)
+  e codegen orval que gera:
+- lib/api-zod .............. schemas zod (validar respostas)
+- lib/api-client-react ..... hooks React Query tipados
+  (useGetMyKeys, useActivateKey, useGenerateTrial, etc).
+- extension/lvb-sonico ..... extensao Chrome Manifest V3.
+
+Banco: PostgreSQL.
+Senhas: bcrypt (hash, nunca texto puro).
+Geracao de key: crypto randomBytes, formato
+LVB-XXXX-XXXX-XXXX (hexadecimal maiusculo).
+
+O frontend e servido em "/" e a API em "/api" no mesmo
+dominio (evita CORS). O servidor le a porta da variavel de
+ambiente PORT.
+
+------------------------------------------------------------
+3. BANCO DE DADOS (TABELAS)
+------------------------------------------------------------
+users:
+- id (uuid), name, email (unico), passwordHash,
+  role ('admin' | 'client'), status ('pending'|'approved'),
+  createdAt, updatedAt.
+
+license_keys:
+- id (uuid), code (unico, LVB-XXXX-XXXX-XXXX),
+  plan ('trial'|'daily'|'weekly'|'monthly'|'lifetime'),
+  status ('inactive'|'active'|'expired'|'revoked'),
+  userId, userEmail, deviceFingerprint (HWID),
+  customerName, customerEmail (cliente final, p/ revenda),
+  activatedAt, expiresAt, createdAt, updatedAt.
+
+payments:
+- id (uuid), userId, plan, amountCents, provider
+  ('pushinpay'), providerPaymentId, status
+  ('pending'|'paid'|'expired'|'failed'), qrCode (copia e
+  cola), qrCodeBase64 (imagem), keyId (key entregue),
+  createdAt, updatedAt.
+
+extension_files:
+- guarda o zip da extensao enviado pelo admin (bytea ou
+  storage), filename, size, updatedAt.
+
+user_sessions: tabela do connect-pg-simple (criar
+manualmente: sid, sess json, expire + indice).
+
+REGRA DE OURO DAS KEYS: a contagem de tempo SO comeca na
+ATIVACAO (nao na compra). Duracoes: trial 15 minutos, daily
+24h, weekly 7 dias, monthly 30 dias, lifetime sem expiracao.
+Status "expirada" e calculado dinamicamente: se status =
+active e expiresAt <= agora, responder "expired".
+
+------------------------------------------------------------
+4. AUTENTICACAO
+------------------------------------------------------------
+- Cadastro de cliente: nome, email, senha (min 8).
+- Login em 2 etapas para ADMIN: email + senha e depois um
+  codigo fixo de seguranca (segunda etapa). Cliente comum
+  loga direto com email + senha.
+- Sessao via cookie httpOnly (express-session), segredo em
+  SESSION_SECRET.
+- Middlewares: requireClient (logado) e requireAdmin
+  (logado + role admin). TODAS as rotas /admin/* exigem
+  admin; todas as /me/* exigem login.
+
+------------------------------------------------------------
+5. ROTAS DA API (prefixo /api)
+------------------------------------------------------------
+Publicas:
+- POST /auth/register, POST /auth/login,
+  POST /auth/verify-code (2a etapa), POST /auth/logout,
+  GET /auth/me.
+- POST /public/validate  { code, fingerprint } -> usada pela
+  EXTENSAO. Logica:
+  * key inexistente -> { valid:false, reason:"not_found" }
+  * revogada -> reason:"revoked"
+  * expirada -> reason:"expired" (e marca no banco)
+  * inativa -> ATIVA agora (grava activatedAt, expiresAt,
+    deviceFingerprint = fingerprint recebido)
+  * ativa com fingerprint diferente ->
+    reason:"device_mismatch" (1 dispositivo por key)
+  * ativa e mesmo fingerprint -> { valid:true, plan,
+    expiresAt }
+
+Cliente (/me):
+- GET /me/keys (minhas keys)
+- POST /me/keys/activate { code } (reivindicar/ativar)
+- POST /me/keys/:id/reset-device (liberar HWID p/ trocar
+  de computador)
+- PATCH /me/keys/:id/customer { customerName, customerEmail }
+  (etiqueta de cliente final na key — validar formato de
+  email, max 120 chars, aceitar null para limpar)
+- POST /me/trial { customerName?, customerEmail? } — gera
+  key de teste de 15 min. REGRA: so pode se o usuario tiver
+  ao menos 1 key paga nao revogada.
+- GET /me/extension (status do download: liberado se tiver
+  key paga) e GET /me/extension/download (zip).
+- GET /me/payments (meus pagamentos) e
+  POST /me/payments/:id/check (conferir pagamento manualmente).
+- POST /payments/create { plan } -> cria cobranca PIX na
+  PushinPay, salva payment pending, retorna qrCode +
+  qrCodeBase64.
+
+Admin (/admin):
+- GET /admin/stats (contadores do dashboard)
+- GET /admin/users (+ aprovar, mudar status, deletar)
+- GET /admin/keys (filtros por plano/status)
+- POST /admin/keys/generate { plan, quantity (1..500),
+  userEmail? } -> gera keys em lote
+- POST /admin/keys/:id/revoke, /reset-device, DELETE /:id
+- PUT /admin/extension (upload do zip da extensao)
+- GET /admin/payments (todos os pagamentos)
+
+PAGAMENTO PushinPay (PIX):
+- Criar: POST https://api.pushinpay.com.br/api/pix/cashIn
+  com Authorization: Bearer TOKEN, body { value: centavos }.
+  Guardar o id retornado.
+- Conferir: GET /api/transactions/{id}. ATENCAO: o id volta
+  minusculo na criacao e MAIUSCULO na consulta — comparar
+  sem diferenciar maiusculas.
+- Quando status = paid: gerar a key do plano comprado,
+  vincular ao comprador, marcar payment como paid (entrega
+  automatica). Ha um verificador periodico no servidor + o
+  botao "Ja fiz o pagamento" no site.
+- Precos: Diario R$3,90 / Semanal R$8,90 / Mensal R$15,90 /
+  Vitalicio R$22,90 (em centavos no banco).
+
+------------------------------------------------------------
+6. FRONTEND — PAGINAS
+------------------------------------------------------------
+Publicas:
+- Login (com etapa de codigo p/ admin), Cadastro,
+  /resetar-key (pagina para o usuario final resetar o
+  dispositivo da key dele informando o codigo).
+
+Painel do CLIENTE:
+- Cards das keys (visual minimalista): codigo (clique para
+  copiar), badge de status colorida (ativa=verde,
+  inativa=ambar, expirada=vermelho, revogada=cinza), plano,
+  cliente final (nome/email com icone de lapis para editar),
+  tempo restante (contagem), dispositivo (Vinculado/Livre),
+  botao "Resetar Dispositivo (HWID)".
+- Botao "Ativar Key" (modal com input do codigo).
+- Botao "Teste Gratis" (modal pedindo nome e email do
+  cliente final; bloqueado ate ter key paga, com aviso).
+- Card de download da extensao (bloqueado sem key paga).
+- Pagina "Planos": 4 cards de precos, compra via PIX em
+  modal (QR code + copia e cola + botao "Ja fiz o
+  pagamento" + retomada automatica de PIX pendente com
+  menos de 1h ao recarregar a pagina).
+
+Painel do ADMIN:
+- Dashboard com estatisticas (usuarios, keys ativas,
+  receita, pagamentos).
+- Gestao de usuarios (aprovar, filtrar, deletar).
+- Gestao de licencas: tabela com busca, filtros de
+  plano/status, gerar keys em lote (modal), copiar codigo,
+  revogar, resetar HWID, deletar. Lista de keys geradas com
+  botao copiar em cada uma.
+- Upload do zip da extensao (o que os clientes baixam).
+- Lista de pagamentos.
+
+Design geral: fundo escuro, paineis "glass"
+(bg translucido + border white/10 + blur), primaria azul
+#3B82F6, botoes com sombra azul suave, tipografia limpa,
+badges com fundo colorido a 10-20% de opacidade, animacoes
+sutis de entrada (fade/slide), SEM emojis.
+
+------------------------------------------------------------
+7. EXTENSAO CHROME (Manifest V3)
+------------------------------------------------------------
+- manifest.json com icons 16/32/48/128 e action.default_icon
+  (senao o icone some no gerenciador de extensoes).
+- Side panel (painel lateral) com:
+  * Banner de marca fixo no topo (imagem webp comprimida,
+    max-height 120px).
+  * Tela de bloqueio: "Insira sua chave de licenca para
+    desbloquear", input LVB-XXXX-XXXX-XXXX, botao "Validar
+    Licenca". SEM contatos de suporte/WhatsApp.
+  * Apos validar: interface principal da ferramenta.
+- Arquivo de licenca (lvb-license.js):
+  * Lista API_BASES = [servidor oficial, servidor reserva]
+    (failover: se o oficial cair por ERRO DE REDE, tenta o
+    proximo; resposta "key invalida" NUNCA dispara failover).
+  * POST /api/public/validate { code, fingerprint }.
+  * fingerprint = identificador estavel do dispositivo
+    (gerado e salvo em chrome.storage).
+  * Mensagens pt-BR para cada reason (not_found, revoked,
+    expired, device_conflict com link para /resetar-key,
+    erro de conexao).
+- Botao "comprar" abre a pagina /planos do site (nao abre
+  WhatsApp).
+- Cuidado com all_frames: qualquer UI injetada em paginas
+  deve rodar so no frame principal (top frame), senao
+  elementos duplicam.
+- Distribuicao: zip do diretorio da extensao (sem
+  package.json), enviado pelo admin via painel; cliente
+  baixa e instala via "Carregar sem compactacao" no
+  chrome://extensions com Modo do desenvolvedor ligado.
+
+------------------------------------------------------------
+8. SEGURANCA (OBRIGATORIO)
+------------------------------------------------------------
+- bcrypt nas senhas; sessoes httpOnly; segredo forte.
+- Keys geradas com crypto randomBytes (nunca Math.random).
+- 1 dispositivo por key (HWID) com reset controlado.
+- Toda rota admin protegida por role; toda rota /me exige
+  dono do recurso (checar userId em cada consulta).
+- Validacao de entrada em todas as rotas (zod ou manual):
+  emails com formato valido, limites de tamanho, quantidade
+  de keys 1..500.
+- Expiracao conferida no servidor a cada validacao (nunca
+  confiar no relogio do cliente).
+- NUNCA deixar no codigo da extensao chamadas para
+  servidores de terceiros/antigos donos (risco de
+  kill-switch remoto).
+- Segredos apenas em variaveis de ambiente:
+  DATABASE_URL, SESSION_SECRET, PUSHINPAY_TOKEN,
+  PUBLIC_BASE_URL.
+
+------------------------------------------------------------
+9. CONTINUIDADE / RESERVA (PLANO B)
+------------------------------------------------------------
+- Codigo versionado no GitHub (backup automatico).
+- Banco em servico neutro (ex.: Neon) para que a hospedagem
+  principal e a reserva (ex.: Vercel, com Express adaptado
+  para serverless via handler catch-all + vercel.json)
+  enxerguem os MESMOS dados.
+- Extensao com lista de servidores (failover) — se o
+  principal cair, os clientes continuam validando na
+  reserva sem reinstalar nada.
+- Backup ZIP completo (codigo + dump SQL do banco).
+
+------------------------------------------------------------
+10. CRITERIOS DE PRONTO (TESTAR TUDO)
+------------------------------------------------------------
+[ ] Cadastro + login cliente; login admin em 2 etapas.
+[ ] Comprar plano via PIX (sandbox) -> pagar -> key entregue
+    automaticamente e visivel no painel.
+[ ] Botao "Ja fiz o pagamento" confirma na hora.
+[ ] Ativar key -> contagem comeca; expira no tempo certo;
+    apos expirar, extensao bloqueia com mensagem correta.
+[ ] Mesma key em 2 PCs -> segundo PC bloqueado
+    (device_mismatch); reset de dispositivo libera.
+[ ] Teste gratis: bloqueado sem key paga; com key paga, pede
+    nome/email do cliente e gera key de 15 min.
+[ ] Editar cliente (nome/email) de qualquer key pelo lapis.
+[ ] Admin: gerar 1 e 100 keys, revogar, resetar, deletar,
+    aprovar usuario, subir zip da extensao.
+[ ] Download da extensao bloqueado sem key paga.
+[ ] Extensao: icone aparece no gerenciador; banner no topo;
+    valida key; failover funciona (derrubar servidor
+    principal e validar pela reserva).
+[ ] Nenhum emoji em nenhuma tela. Tudo em pt-BR.
+[ ] Nenhum segredo no codigo-fonte.
+
+FIM DA INSTRUCAO.

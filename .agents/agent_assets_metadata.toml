@@ -14,3 +14,10 @@ uri = "file://backups/lvb-sonico-completo.zip"
 type = "unspecified"
 title = "LVB Sônico — Pacote completo (Plano C)"
 description = "ZIP com toda a estrutura: frontend, backend/APIs, extensão, código compartilhado e cópia completa do banco de dados, mais o LEIA-ME com instruções."
+
+[[outputs]]
+id = "smF9oQlQnNWOfMeBn9PEM"
+uri = "file://backups/INSTRUCAO-COMPLETA-LVB-SONICO.txt"
+type = "text"
+title = "Instrução completa — LVB Sônico"
+description = "Prompt completo para recriar todo o sistema: site, painéis, API, banco, pagamentos PIX e extensão Chrome."
