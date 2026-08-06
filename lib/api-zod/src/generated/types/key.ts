@@ -20,6 +20,10 @@ export interface Key {
   /** @nullable */
   deviceFingerprint?: string | null;
   /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
   activatedAt?: Date | null;
   /** @nullable */
   expiresAt?: Date | null;

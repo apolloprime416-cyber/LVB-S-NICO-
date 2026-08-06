@@ -114,6 +114,8 @@ export const GetMyKeysResponseItem = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -136,6 +138,8 @@ export const ActivateKeyResponse = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -157,6 +161,36 @@ export const ResetMyKeyDeviceResponse = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
+  "activatedAt": zod.coerce.date().nullish(),
+  "expiresAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Set or clear the customer label (name/email) of one of my keys
+ */
+export const UpdateMyKeyCustomerParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateMyKeyCustomerBody = zod.object({
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish()
+})
+
+export const UpdateMyKeyCustomerResponse = zod.object({
+  "id": zod.string(),
+  "code": zod.string(),
+  "plan": zod.enum(['trial', 'daily', 'weekly', 'monthly', 'lifetime']),
+  "status": zod.enum(['inactive', 'active', 'expired', 'revoked']),
+  "userId": zod.string().nullish(),
+  "userEmail": zod.string().nullish(),
+  "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -166,6 +200,11 @@ export const ResetMyKeyDeviceResponse = zod.object({
 /**
  * @summary Generate a free 15-minute trial key (requires owning at least one paid key)
  */
+export const GenerateTrialBody = zod.object({
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish()
+})
+
 export const GenerateTrialResponse = zod.object({
   "id": zod.string(),
   "code": zod.string(),
@@ -174,6 +213,8 @@ export const GenerateTrialResponse = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -305,6 +346,8 @@ export const GetKeysResponseItem = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -333,6 +376,8 @@ export const GenerateKeysResponseItem = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -355,6 +400,8 @@ export const RevokeKeyResponse = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -376,6 +423,8 @@ export const ResetKeyDeviceResponse = zod.object({
   "userId": zod.string().nullish(),
   "userEmail": zod.string().nullish(),
   "deviceFingerprint": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()

@@ -12,6 +12,8 @@ export const licenseKeysTable = pgTable("license_keys", {
   userId: uuid("user_id"),
   userEmail: text("user_email"),
   deviceFingerprint: text("device_fingerprint"),
+  customerName: text("customer_name"),
+  customerEmail: text("customer_email"),
   activatedAt: timestamp("activated_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })

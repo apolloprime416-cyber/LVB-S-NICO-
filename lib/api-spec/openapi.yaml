@@ -189,11 +189,42 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
 
+  /me/keys/{id}/customer:
+    patch:
+      operationId: updateMyKeyCustomer
+      tags: [me]
+      summary: Set or clear the customer label (name/email) of one of my keys
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KeyCustomerInput"
+      responses:
+        "200":
+          description: Updated key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Key"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
   /me/trial:
     post:
       operationId: generateTrial
       tags: [me]
       summary: Generate a free 15-minute trial key (requires owning at least one paid key)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KeyCustomerInput"
       responses:
         "201":
           description: Trial key created
@@ -555,6 +586,13 @@ components:
       properties:
         code:
           type: string
+    KeyCustomerInput:
+      type: object
+      properties:
+        customerName:
+          type: ["string", "null"]
+        customerEmail:
+          type: ["string", "null"]
     ValidateInput:
       type: object
       required: [code, fingerprint]
@@ -644,6 +682,10 @@ components:
         userEmail:
           type: ["string", "null"]
         deviceFingerprint:
+          type: ["string", "null"]
+        customerName:
+          type: ["string", "null"]
+        customerEmail:
           type: ["string", "null"]
         activatedAt:
           type: ["string", "null"]

@@ -43,6 +43,13 @@ export interface KeyCodeInput {
   code: string;
 }
 
+export interface KeyCustomerInput {
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerEmail?: string | null;
+}
+
 export interface ValidateInput {
   code: string;
   fingerprint: string;
@@ -169,6 +176,10 @@ export interface Key {
   userEmail?: string | null;
   /** @nullable */
   deviceFingerprint?: string | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerEmail?: string | null;
   /** @nullable */
   activatedAt?: string | null;
   /** @nullable */

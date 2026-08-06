@@ -113,6 +113,42 @@ router.post(
   },
 );
 
+function cleanCustomerField(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const v = value.trim().slice(0, 120);
+  return v.length > 0 ? v : null;
+}
+
+router.patch(
+  "/me/keys/:id/customer",
+  requireClient,
+  async (req, res): Promise<void> => {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const [key] = await db
+      .select()
+      .from(licenseKeysTable)
+      .where(
+        and(
+          eq(licenseKeysTable.id, rawId),
+          eq(licenseKeysTable.userId, req.currentUser!.id),
+        ),
+      );
+    if (!key) {
+      res.status(404).json({ error: "Key não encontrada" });
+      return;
+    }
+    const [updated] = await db
+      .update(licenseKeysTable)
+      .set({
+        customerName: cleanCustomerField(req.body?.customerName),
+        customerEmail: cleanCustomerField(req.body?.customerEmail),
+      })
+      .where(eq(licenseKeysTable.id, key.id))
+      .returning();
+    res.json(serializeKey(updated));
+  },
+);
+
 router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
   const userId = req.currentUser!.id;
 
@@ -143,6 +179,8 @@ router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
       status: "inactive",
       userId,
       userEmail: req.currentUser!.email,
+      customerName: cleanCustomerField(req.body?.customerName),
+      customerEmail: cleanCustomerField(req.body?.customerEmail),
     })
     .returning();
 

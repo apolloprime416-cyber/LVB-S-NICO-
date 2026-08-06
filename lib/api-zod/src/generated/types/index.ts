@@ -19,6 +19,7 @@ export * from './getUsersStatus';
 export * from './healthStatus';
 export * from './key';
 export * from './keyCodeInput';
+export * from './keyCustomerInput';
 export * from './keyGenerateInput';
 export * from './keyGenerateInputPlan';
 export * from './keyPlan';

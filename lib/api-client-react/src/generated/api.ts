@@ -29,6 +29,7 @@ import type {
   HealthStatus,
   Key,
   KeyCodeInput,
+  KeyCustomerInput,
   KeyGenerateInput,
   LoginInput,
   OkResult,
@@ -726,6 +727,78 @@ export const useResetMyKeyDevice = <TError = ErrorType<ErrorResponse>,
       return useMutation(getResetMyKeyDeviceMutationOptions(options));
     }
 
+export const getUpdateMyKeyCustomerUrl = (id: string,) => {
+
+
+
+
+  return `/api/me/keys/${id}/customer`
+}
+
+/**
+ * @summary Set or clear the customer label (name/email) of one of my keys
+ */
+export const updateMyKeyCustomer = async (id: string,
+    keyCustomerInput: KeyCustomerInput, options?: Parameters<typeof customFetch>[1]): Promise<Key> => {
+
+  return customFetch<Key>(getUpdateMyKeyCustomerUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(keyCustomerInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyKeyCustomerMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyKeyCustomer>>, TError,{id: string;data: BodyType<KeyCustomerInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyKeyCustomer>>, TError,{id: string;data: BodyType<KeyCustomerInput>}, TContext> => {
+
+const mutationKey = ['updateMyKeyCustomer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyKeyCustomer>>, {id: string;data: BodyType<KeyCustomerInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMyKeyCustomer(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyKeyCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyKeyCustomer>>>
+    export type UpdateMyKeyCustomerMutationBody = BodyType<KeyCustomerInput>
+    export type UpdateMyKeyCustomerMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Set or clear the customer label (name/email) of one of my keys
+ */
+export const useUpdateMyKeyCustomer = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyKeyCustomer>>, TError,{id: string;data: BodyType<KeyCustomerInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyKeyCustomer>>,
+        TError,
+        {id: string;data: BodyType<KeyCustomerInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateMyKeyCustomerMutationOptions(options));
+    }
+
 export const getGenerateTrialUrl = () => {
 
 
@@ -737,14 +810,14 @@ export const getGenerateTrialUrl = () => {
 /**
  * @summary Generate a free 15-minute trial key (requires owning at least one paid key)
  */
-export const generateTrial = async ( options?: Parameters<typeof customFetch>[1]): Promise<Key> => {
+export const generateTrial = async (keyCustomerInput?: KeyCustomerInput, options?: Parameters<typeof customFetch>[1]): Promise<Key> => {
 
   return customFetch<Key>(getGenerateTrialUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(keyCustomerInput)
   }
 );}
 
@@ -753,8 +826,8 @@ export const generateTrial = async ( options?: Parameters<typeof customFetch>[1]
 
 
 export const getGenerateTrialMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateTrial>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof generateTrial>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateTrial>>, TError,{data?: BodyType<KeyCustomerInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateTrial>>, TError,{data?: BodyType<KeyCustomerInput>}, TContext> => {
 
 const mutationKey = ['generateTrial'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -766,10 +839,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateTrial>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateTrial>>, {data?: BodyType<KeyCustomerInput>}> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  generateTrial(requestOptions)
+          return  generateTrial(data,requestOptions)
         }
 
 
@@ -780,18 +853,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type GenerateTrialMutationResult = NonNullable<Awaited<ReturnType<typeof generateTrial>>>
-
+    export type GenerateTrialMutationBody = BodyType<KeyCustomerInput> | undefined
     export type GenerateTrialMutationError = ErrorType<ErrorResponse>
 
     /**
  * @summary Generate a free 15-minute trial key (requires owning at least one paid key)
  */
 export const useGenerateTrial = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateTrial>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateTrial>>, TError,{data?: BodyType<KeyCustomerInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof generateTrial>>,
         TError,
-        void,
+        {data?: BodyType<KeyCustomerInput>},
         TContext
       > => {
       return useMutation(getGenerateTrialMutationOptions(options));
