@@ -2,14 +2,14 @@ import { Router, type IRouter } from "express";
 import { and, eq, desc, isNull, or, lt } from "drizzle-orm";
 import { db, paymentsTable, licenseKeysTable } from "@workspace/db";
 import { requireClient } from "../middlewares/auth";
-import { generateKeyCode, serializeKey } from "../lib/keys";
+import { serializeKey } from "../lib/keys";
 import {
   isPurchasablePlan,
   createPix,
   getTransaction,
   getWebhookBaseUrl,
-  type PushinPayTransaction,
 } from "../lib/pushinpay";
+import { settlePayment } from "../lib/paymentSettlement";
 import { getEffectivePlans, getEffectivePriceCents } from "../lib/pricing";
 import { logger } from "../lib/logger";
 
@@ -44,102 +44,6 @@ async function leaseProviderCheck(
     )
     .returning({ id: paymentsTable.id });
   return claimed.length > 0;
-}
-
-/**
- * Verify the provider transaction against the stored payment and, if truly
- * paid for the right amount, create the license key and mark the payment
- * paid — all in one database transaction, exactly once.
- *
- * Returns the key id when the payment is (now or already) fulfilled.
- */
-async function settlePayment(
-  paymentId: string,
-  tx: PushinPayTransaction,
-): Promise<{ status: string; keyId: string | null }> {
-  const [payment] = await db
-    .select()
-    .from(paymentsTable)
-    .where(eq(paymentsTable.id, paymentId));
-  if (!payment) return { status: "unknown", keyId: null };
-  if (payment.status !== "pending") {
-    return { status: payment.status, keyId: payment.keyId };
-  }
-
-  if (tx.status === "canceled" || tx.status === "expired") {
-    await db
-      .update(paymentsTable)
-      .set({ status: tx.status })
-      .where(
-        and(eq(paymentsTable.id, paymentId), eq(paymentsTable.status, "pending")),
-      );
-    return { status: tx.status, keyId: null };
-  }
-
-  if (tx.status !== "paid") {
-    return { status: "pending", keyId: null };
-  }
-
-  // Bind fulfillment to the exact expected amount and transaction id.
-  // PushinPay returns the id UPPERCASE on consult but lowercase on create —
-  // compare case-insensitively.
-  const paidValue = Number(tx.value);
-  if (
-    String(tx.id).toLowerCase() !== payment.providerId.toLowerCase() ||
-    paidValue !== payment.valueCents
-  ) {
-    logger.error(
-      { paymentId, expected: payment.valueCents, got: tx.value, txId: tx.id },
-      "Pagamento com valor/transação divergente — não será liberado",
-    );
-    return { status: "pending", keyId: null };
-  }
-
-  // Atomic: claim pending -> paid, create key, link key. Rolls back together.
-  const keyId = await db.transaction(async (trx) => {
-    const claimed = await trx
-      .update(paymentsTable)
-      .set({ status: "paid", paidAt: new Date() })
-      .where(
-        and(
-          eq(paymentsTable.id, paymentId),
-          eq(paymentsTable.status, "pending"),
-        ),
-      )
-      .returning({ id: paymentsTable.id });
-    if (claimed.length === 0) return null; // lost the race — already settled
-
-    const [key] = await trx
-      .insert(licenseKeysTable)
-      .values({
-        code: generateKeyCode(),
-        plan: payment.plan,
-        status: "inactive",
-        userId: payment.userId,
-        userEmail: payment.userEmail,
-      })
-      .returning({ id: licenseKeysTable.id });
-
-    await trx
-      .update(paymentsTable)
-      .set({ keyId: key!.id })
-      .where(eq(paymentsTable.id, paymentId));
-    return key!.id;
-  });
-
-  if (keyId) {
-    logger.info(
-      { paymentId, plan: payment.plan, keyId },
-      "Pagamento confirmado — key gerada",
-    );
-    return { status: "paid", keyId };
-  }
-  // Another request settled it first — re-read for the final state.
-  const [fresh] = await db
-    .select()
-    .from(paymentsTable)
-    .where(eq(paymentsTable.id, paymentId));
-  return { status: fresh?.status ?? "paid", keyId: fresh?.keyId ?? null };
 }
 
 /**
@@ -205,7 +109,8 @@ router.post("/me/payments", requireClient, async (req, res): Promise<void> => {
         userEmail: req.currentUser!.email,
         qrCode: tx.qr_code ?? null,
         qrCodeBase64: tx.qr_code_base64 ?? null,
-        lastCheckedAt: new Date(),
+        // lastCheckedAt deliberately NOT set — keeps it null so the first
+        // webhook or poll is never blocked by the 60s rate-limit lease.
       })
       .returning();
     res.status(201).json({
@@ -356,49 +261,74 @@ router.post(
 );
 
 /**
- * PushinPay webhook — active 24/7. The payload is never trusted alone:
- * the status and amount are re-verified against the PushinPay API before
- * any key is issued. Processing completes BEFORE the 200 ack, so provider
- * retries cover transient failures. The provider lookup is behind the same
- * atomic per-transaction lease as buyer polling, so an abusive caller
- * cannot force query floods against PushinPay.
+ * PushinPay webhook — active 24/7. The payload is NEVER trusted alone:
+ * the status and amount are always re-verified against the PushinPay API.
+ *
+ * The webhook bypasses the 60s polling lease — PushinPay is calling us,
+ * not a client browser. The settlePayment DB transaction is already
+ * idempotent (atomic claim), so double-delivery is safe.
+ *
+ * We respond 200 BEFORE returning to guarantee PushinPay won't retry
+ * a successful delivery as a failure.
  */
 router.post(
   "/public/pushinpay-webhook",
   async (req, res): Promise<void> => {
+    // Ack immediately — prevents PushinPay from timing out and retrying
+    // before we even finish. Key generation happens asynchronously after.
+    res.status(200).json({ ok: true });
+
     const providerId = String(
       req.body?.id ?? req.body?.transaction_id ?? "",
     ).toLowerCase();
-    if (!providerId) {
-      res.status(200).json({ ok: true }); // malformed — nothing to retry
-      return;
-    }
+    if (!providerId) return;
+
     try {
       const [payment] = await db
         .select()
         .from(paymentsTable)
         .where(eq(paymentsTable.providerId, providerId));
-      if (!payment || payment.status !== "pending") {
-        res.status(200).json({ ok: true });
-        return;
-      }
-      const settled = await checkWithProvider(payment);
-      if (settled === null && payment.status === "pending") {
-        // Lease busy (checked <60s ago) — ask the provider to retry later
-        // instead of acking a payment we haven't verified yet.
-        const [fresh] = await db
-          .select({ status: paymentsTable.status })
-          .from(paymentsTable)
-          .where(eq(paymentsTable.id, payment.id));
-        if (fresh?.status === "pending") {
-          res.status(429).json({ retry: true });
-          return;
-        }
-      }
-      res.status(200).json({ ok: true });
+      if (!payment || payment.status !== "pending") return;
+
+      // Bypass the rate-limit lease — go straight to the API.
+      const tx = await getTransaction(payment.providerId);
+      if (!tx) return;
+      await settlePayment(payment.id, tx);
     } catch (err) {
       logger.error({ err }, "Falha ao processar webhook PushinPay");
-      res.status(500).json({ error: "retry" });
+    }
+  },
+);
+
+/**
+ * Admin: force-check ALL pending payments right now, regardless of lease.
+ * Useful to recover payments where the webhook was missed.
+ */
+router.post(
+  "/admin/payments/recheck",
+  async (req, res): Promise<void> => {
+    const pending = await db
+      .select()
+      .from(paymentsTable)
+      .where(eq(paymentsTable.status, "pending"));
+
+    res.json({ checking: pending.length });
+
+    // Run async — do not block the response
+    for (const payment of pending) {
+      try {
+        const tx = await getTransaction(payment.providerId);
+        if (!tx) continue;
+        const result = await settlePayment(payment.id, tx);
+        if (result.status === "paid") {
+          logger.info(
+            { paymentId: payment.id, plan: payment.plan },
+            "Pagamento recuperado via recheck manual",
+          );
+        }
+      } catch (err) {
+        logger.error({ err, paymentId: payment.id }, "Erro no recheck manual");
+      }
     }
   },
 );
