@@ -21,5 +21,7 @@ export function serializeUser(row: UserRow, keyCount: number) {
     status: row.status,
     keyCount,
     createdAt: row.createdAt.toISOString(),
+    // Included for managers so the toggle in the admin panel reflects the real state
+    canCreateKeys: row.role === "manager" ? (row.canCreateKeys ?? false) : undefined,
   };
 }
