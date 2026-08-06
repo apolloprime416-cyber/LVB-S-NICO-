@@ -7,3 +7,10 @@ uri = "file://extension/lvb-sonico-extensao.zip"
 type = "unspecified"
 title = "Extensão LVB Sônico — versão final (produção)"
 description = "Zip atualizado da extensão, agora validando keys direto no painel publicado (lvbsonic.replit.app)."
+
+[[outputs]]
+id = "R-jAmUK17RCWBrBhiSilz"
+uri = "file://backups/lvb-sonico-completo.zip"
+type = "unspecified"
+title = "LVB Sônico — Pacote completo (Plano C)"
+description = "ZIP com toda a estrutura: frontend, backend/APIs, extensão, código compartilhado e cópia completa do banco de dados, mais o LEIA-ME com instruções."
