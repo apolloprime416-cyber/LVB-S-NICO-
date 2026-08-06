@@ -28,3 +28,10 @@ uri = "file://backups/lvb-sonico-sem-key.zip"
 type = "unspecified"
 title = "LVB Sônico — cópia sem key"
 description = "Cópia da extensão sem validação de licença: abre direto, sem pedir key."
+
+[[outputs]]
+id = "ryJeu4omtb40lglNgyS38"
+uri = "file://backups/50-copys-extensao-lvb-sonico.txt"
+type = "text"
+title = "50 copys da extensão (TXT)"
+description = "50 copys únicas em português, cada uma com gancho, escassez, gatilho e CTA, sobre a extensão que libera o Lovable sem consumir créditos."
