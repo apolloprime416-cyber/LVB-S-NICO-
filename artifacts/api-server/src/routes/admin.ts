@@ -168,6 +168,21 @@ router.post("/admin/users/:id/promote", async (req, res): Promise<void> => {
   res.json(serializeUser(updated, 0));
 });
 
+// Admin-only: demote a manager back to client
+router.post("/admin/users/:id/demote", requireAdmin, async (req, res): Promise<void> => {
+  const id = paramId(req);
+  const [updated] = await db
+    .update(usersTable)
+    .set({ role: "client", canCreateKeys: false })
+    .where(and(eq(usersTable.id, id), eq(usersTable.role, "manager")))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Gerente não encontrado" });
+    return;
+  }
+  res.json(serializeUser(updated, 0));
+});
+
 router.delete("/admin/users/:id", async (req, res): Promise<void> => {
   const id = paramId(req);
   await db.delete(licenseKeysTable).where(eq(licenseKeysTable.userId, id));

@@ -26,7 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2, MoreVertical, ShieldCheck, ShieldAlert, Key, Search, Trash2, Edit3,
-  UserCheck, UserX, Users, ShieldPlus,
+  UserCheck, UserX, Users, ShieldPlus, ShieldMinus,
 } from 'lucide-react';
 import { formatDate, userStatusLabels } from '@/lib/format';
 
@@ -96,6 +96,27 @@ export default function AdminUsers() {
       toast({ variant: 'destructive', title: 'Erro ao promover usuário' });
     } finally {
       setPromotingId(null);
+    }
+  };
+
+  // Demote manager back to client
+  const [demotingId, setDemotingId] = useState<string | null>(null);
+  const handleDemoteToClient = async (id: string, name: string) => {
+    if (!confirm(`Rebaixar "${name}" para usuário comum? Ele perderá o acesso de gerente imediatamente.`)) return;
+    setDemotingId(id);
+    try {
+      const res = await fetch(`/api/admin/users/${id}/demote`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error();
+      toast({ title: `${name} voltou a ser usuário` });
+      refreshCache();
+      queryClient.invalidateQueries({ queryKey: getGetManagersQueryKey() });
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro ao rebaixar gerente' });
+    } finally {
+      setDemotingId(null);
     }
   };
 
@@ -319,6 +340,15 @@ export default function AdminUsers() {
                           className="data-[state=checked]:bg-primary"
                         />
                       </div>
+                      <Button
+                        variant="ghost" size="icon"
+                        className="h-8 w-8 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                        title="Rebaixar para usuário"
+                        disabled={demotingId === m.id}
+                        onClick={() => handleDemoteToClient(m.id, m.name)}
+                      >
+                        {demotingId === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldMinus className="h-4 w-4" />}
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => handleDeleteManager(m.id)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>

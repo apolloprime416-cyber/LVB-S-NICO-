@@ -6,6 +6,7 @@ import {
   useResetKeyDevice, 
   useDeleteKey,
   useGetUsers,
+  useGetManagers,
   useGetSession,
   getGetKeysQueryKey,
   getGetAdminStatsQueryKey
@@ -45,7 +46,15 @@ export default function AdminKeys() {
   if (statusFilter !== 'all') queryParams.status = statusFilter;
 
   const { data: keys, isLoading } = useGetKeys(queryParams);
-  const { data: users } = useGetUsers({ status: 'approved' }); // For assigning keys
+  const { data: users } = useGetUsers({ status: 'approved' }); // clients only
+  const { data: managers } = useGetManagers(); // managers for dropdown
+
+  // Combined list: approved clients + all managers
+  const assignableUsers = useMemo(() => {
+    const clients = (users ?? []).map((u: any) => ({ ...u, role: 'client' }));
+    const mgrs = (managers ?? []).map((u: any) => ({ ...u, role: 'manager' }));
+    return [...clients, ...mgrs];
+  }, [users, managers]);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -260,7 +269,7 @@ export default function AdminKeys() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Não atribuir (Key solta)</SelectItem>
-                      {users?.filter(u => u.role === 'client' || u.role === 'manager').map(u => (
+                      {assignableUsers.map(u => (
                         <SelectItem key={u.email} value={u.email}>
                           {u.name} ({u.email}){u.role === 'manager' ? ' — Gerente' : ''}
                         </SelectItem>
