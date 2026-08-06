@@ -1,11 +1,20 @@
 // LVB Sônico — ponte de licenciamento
 // Valida as keys no painel LVB Sônico e traduz a resposta para o formato
 // legado usado internamente pela extensão.
+//
+// FAILOVER: a extensão tenta os servidores na ordem abaixo. Se o principal
+// estiver fora do ar (erro de REDE, não key inválida), ela tenta o próximo
+// automaticamente. Para ativar um servidor reserva (ex.: Vercel), basta
+// adicionar o endereço em API_BASES e redistribuir o zip pelo painel.
 (function () {
-  // ATENÇÃO: após publicar o painel, troque para o domínio de produção.
-  const API_BASE = "https://lvbsonic.replit.app";
+  // Ordem de prioridade: o primeiro é o oficial; os demais são reservas.
+  const API_BASES = [
+    "https://lvbsonic.replit.app",
+    // "https://SEU-ENDERECO-RESERVA.vercel.app", // <- ativar quando o plano B estiver no ar
+  ];
 
-  const VALIDATE_ENDPOINT = API_BASE + "/api/public/validate";
+  const API_BASE = API_BASES[0];
+  const VALIDATE_PATH = "/api/public/validate";
   const RESET_PAGE = API_BASE + "/resetar-key";
 
   const MESSAGES = {
@@ -38,7 +47,10 @@
   }
 
   /**
-   * Valida uma key no servidor LVB Sônico.
+   * Valida uma key no servidor LVB Sônico, com failover automático entre os
+   * servidores de API_BASES. Só passa para o próximo servidor em caso de
+   * falha de rede — respostas do tipo "key inválida/expirada/revogada" são
+   * definitivas e não disparam nova tentativa.
    * @param {Function} fetcher — bgFetch (retorna JSON) ou null para usar fetch direto
    * @param {string} key — código da key
    * @param {string} deviceId — fingerprint do dispositivo
@@ -49,36 +61,41 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: (key || "").trim(), fingerprint: deviceId || "" }),
     };
-    try {
-      let raw;
-      if (fetcher) {
-        raw = await fetcher(VALIDATE_ENDPOINT, opts);
-      } else {
-        const r = await fetch(VALIDATE_ENDPOINT, opts);
-        raw = await r.json();
+    for (let i = 0; i < API_BASES.length; i++) {
+      const endpoint = API_BASES[i] + VALIDATE_PATH;
+      try {
+        let raw;
+        if (fetcher) {
+          raw = await fetcher(endpoint, opts);
+        } else {
+          const r = await fetch(endpoint, opts);
+          raw = await r.json();
+        }
+        return adapt(raw || {}, key);
+      } catch (e) {
+        // Falha de rede neste servidor: tenta o próximo da lista.
       }
-      return adapt(raw || {}, key);
-    } catch (e) {
-      return {
-        valid: false,
-        reason: "network",
-        message: MESSAGES.error,
-        expires_at: null,
-        activated_at: null,
-        status: "error",
-        license_type: "paid",
-        lifetime: false,
-        session_id: key,
-        user_name: null,
-        online_count: 0,
-        plan: null,
-      };
     }
+    return {
+      valid: false,
+      reason: "network",
+      message: MESSAGES.error,
+      expires_at: null,
+      activated_at: null,
+      status: "error",
+      license_type: "paid",
+      lifetime: false,
+      session_id: key,
+      user_name: null,
+      online_count: 0,
+      plan: null,
+    };
   }
 
   const root = typeof window !== "undefined" ? window : self;
   root.LVB_API_BASE = API_BASE;
-  root.LVB_VALIDATE_URL = VALIDATE_ENDPOINT;
+  root.LVB_API_BASES = API_BASES;
+  root.LVB_VALIDATE_URL = API_BASE + VALIDATE_PATH;
   root.LVB_RESET_PAGE = RESET_PAGE;
   root.lvbValidate = lvbValidate;
 })();
