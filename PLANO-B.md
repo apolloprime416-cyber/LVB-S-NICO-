@@ -111,5 +111,52 @@ extensões já instaladas param de validar, mesmo com a Vercel de pé.
 
 ---
 
-*Documento gerado em 05/08/2026. Nenhuma etapa deste plano foi executada
-ainda — o sistema no Replit segue exatamente como estava.*
+## Pilar 3 — status: código pronto (06/08/2026)
+
+O repositório já está adaptado para a Vercel. Nada mudou no funcionamento do
+Replit — são arquivos novos que só a Vercel usa:
+
+| Arquivo | Para que serve |
+|---|---|
+| `vercel.json` | Diz à Vercel como instalar, construir e rotear o site + APIs |
+| `artifacts/api-server/src/vercel.ts` | Entrada do servidor no modelo "função sob demanda" |
+| `artifacts/api-server/build-vercel.mjs` | Empacota o servidor num arquivo único (`api/index.mjs`) durante o build da Vercel |
+
+Testado localmente com o mesmo empacotamento da Vercel: saúde da API, login
+(sessão no banco) e validação de key funcionaram apontando para o banco atual.
+
+### Como publicar na Vercel (uma vez, ~10 minutos)
+
+1. Entrar em vercel.com com a conta GitHub e importar o repositório
+   `apolloprime416-cyber/LVB-S-NICO-`.
+2. Na importação, **não mudar nada** de build — o `vercel.json` já configura
+   tudo. Só conferir que o "Root Directory" é a raiz do repositório.
+3. Em *Settings → Environment Variables*, cadastrar:
+   - `DATABASE_URL` — o endereço do banco Neon (o mesmo usado no Replit
+     depois da migração do Pilar 2).
+   - `PUSHINPAY_TOKEN` — o mesmo token da PushinPay usado no Replit.
+   - `SESSION_SECRET` — a mesma chave de sessão usada no Replit (importante
+     ser a mesma para os logins valerem nos dois lugares).
+   - `PUBLIC_BASE_URL` — o endereço da Vercel (ex.:
+     `https://lvbsonico.vercel.app`), para o PIX gerado lá receber o aviso de
+     pagamento lá mesmo.
+4. Fazer o deploy e testar no endereço reserva: login, validar uma key e uma
+   compra PIX pequena.
+5. Guardar na gaveta. A cada atualização importante enviada ao GitHub, a
+   Vercel republica sozinha.
+
+### Observações técnicas (para o dia da virada)
+
+- O webhook da PushinPay de compras feitas no Replit continua apontando para
+  o Replit; a conferência automática a cada 5 segundos cobre o resto.
+- Enquanto o banco ainda for o do Replit (Pilar 2 pendente), a cópia da
+  Vercel só funciona se o Replit estiver no ar — por isso o Pilar 2 (Neon)
+  é pré-requisito para a emergência de verdade.
+- O download da extensão (zip ~220 KB) vem do banco e está dentro dos
+  limites das funções da Vercel.
+
+---
+
+*Documento gerado em 05/08/2026 e atualizado em 06/08/2026 (Pilar 3: código
+adaptado e testado; publicação na Vercel depende do passo a passo acima, que
+usa a sua conta Vercel).*
