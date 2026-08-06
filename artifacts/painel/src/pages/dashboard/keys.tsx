@@ -20,7 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MoreVertical, Copy, ShieldAlert, MonitorSmartphone, PowerOff, Trash2, Key, Search, Plus, Check } from 'lucide-react';
+import { Loader2, MoreVertical, Copy, ShieldAlert, MonitorSmartphone, PowerOff, Trash2, Key, Search, Plus, Check, ArrowRightLeft, UserCheck, UserX } from 'lucide-react';
 import { formatDate, planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
 
 // Plans that require the "canCreateKeys" permission for managers
@@ -54,6 +54,17 @@ export default function AdminKeys() {
   const revokeMutation = useRevokeKey();
   const resetMutation = useResetKeyDevice();
   const deleteMutation = useDeleteKey();
+
+  // Transfer Key state (admin-only)
+  const [transferKeyId, setTransferKeyId] = useState<string | null>(null);
+  const [transferEmail, setTransferEmail] = useState('');
+  const [transferring, setTransferring] = useState(false);
+
+  const transferTarget = useMemo(() => {
+    const q = transferEmail.toLowerCase().trim();
+    if (!q || !users) return null;
+    return users.find((u: any) => u.email.toLowerCase() === q) ?? null;
+  }, [transferEmail, users]);
 
   // Default plan: if manager without permission, start with trial; otherwise monthly
   const [genPlan, setGenPlan] = useState<string>(() => 'monthly');
@@ -98,6 +109,29 @@ export default function AdminKeys() {
         toast({ variant: 'destructive', title: 'Erro ao gerar keys', description: err.data?.error });
       }
     });
+  };
+
+  const handleTransfer = async () => {
+    if (!transferKeyId || !transferTarget) return;
+    setTransferring(true);
+    try {
+      const res = await fetch(`/api/admin/keys/${transferKeyId}/transfer`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: transferTarget.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast({ variant: 'destructive', title: 'Erro', description: data.error }); return; }
+      toast({ title: 'Key transferida', description: `Agora pertence a ${transferTarget.name}.` });
+      setTransferKeyId(null);
+      setTransferEmail('');
+      refreshCache();
+    } catch {
+      toast({ variant: 'destructive', title: 'Erro de conexão. Tente novamente.' });
+    } finally {
+      setTransferring(false);
+    }
   };
 
   const handleAction = (id: string, action: 'revoke' | 'reset' | 'delete') => {
@@ -390,7 +424,16 @@ export default function AdminKeys() {
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="glass-panel border-white/10 min-w-[180px]">
+                          <DropdownMenuContent align="end" className="glass-panel border-white/10 min-w-[200px]">
+                            {/* Admin-only: Transfer key */}
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => { setTransferKeyId(key.id); setTransferEmail(''); }}
+                                className="text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
+                              >
+                                <ArrowRightLeft className="mr-2 h-4 w-4" /> Transferir Key
+                              </DropdownMenuItem>
+                            )}
                             {key.status !== 'revoked' && (
                               <DropdownMenuItem onClick={() => handleAction(key.id, 'revoke')} className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 cursor-pointer">
                                 <PowerOff className="mr-2 h-4 w-4" /> Revogar Licença
@@ -416,6 +459,84 @@ export default function AdminKeys() {
           )}
         </CardContent>
       </Card>
+      {/* ── Transfer Key Dialog (admin only) ── */}
+      <Dialog open={transferKeyId !== null} onOpenChange={(o) => { if (!o) { setTransferKeyId(null); setTransferEmail(''); } }}>
+        <DialogContent className="glass-panel border-white/10 sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5 text-primary" /> Transferir Key
+            </DialogTitle>
+            <DialogDescription>
+              Atribua esta licença a qualquer usuário ou gerente cadastrado. A key passará a ser visível no painel dele.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Email input */}
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">E-mail do destinatário</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="usuario@email.com"
+                  className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary"
+                  value={transferEmail}
+                  onChange={(e) => setTransferEmail(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            {/* Lookup result card */}
+            {transferEmail.trim().length > 3 && (
+              transferTarget ? (
+                <div className={`rounded-lg border px-4 py-3 space-y-1 transition-all
+                  ${transferTarget.status === 'approved'
+                    ? 'border-emerald-500/30 bg-emerald-500/5'
+                    : 'border-amber-500/30 bg-amber-500/5'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {transferTarget.status === 'approved'
+                      ? <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      : <UserX className="w-4 h-4 text-amber-400 shrink-0" />}
+                    <span className="font-semibold text-sm text-foreground">{transferTarget.name}</span>
+                    <span className="text-xs text-muted-foreground ml-auto capitalize">
+                      {transferTarget.role === 'manager' ? 'Gerente' : 'Cliente'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground pl-6">{transferTarget.email}</p>
+                  {(transferTarget as any).phone && (
+                    <p className="text-xs text-muted-foreground pl-6">{(transferTarget as any).phone}</p>
+                  )}
+                  {transferTarget.status !== 'approved' && (
+                    <p className="text-xs text-amber-400 pl-6 mt-1">Cadastro não aprovado — não é possível transferir.</p>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 flex items-center gap-2 text-muted-foreground text-sm">
+                  <UserX className="w-4 h-4 shrink-0" />
+                  E-mail não encontrado no sistema
+                </div>
+              )
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="border-white/10" onClick={() => { setTransferKeyId(null); setTransferEmail(''); }}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!transferTarget || transferTarget.status !== 'approved' || transferring}
+              onClick={handleTransfer}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {transferring
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Transferindo...</>
+                : <><ArrowRightLeft className="w-4 h-4 mr-2" /> Confirmar Transferência</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

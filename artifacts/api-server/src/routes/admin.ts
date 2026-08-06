@@ -315,6 +315,42 @@ router.delete("/admin/keys/:id", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// Transfer a key to a specific user (admin only)
+router.post("/admin/keys/:id/transfer", requireAdmin, async (req, res): Promise<void> => {
+  const { email } = req.body as { email?: string };
+  if (!email?.trim()) {
+    res.status(400).json({ error: "E-mail é obrigatório" });
+    return;
+  }
+
+  const [target] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase().trim()));
+
+  if (!target) {
+    res.status(404).json({ error: "E-mail não encontrado no sistema" });
+    return;
+  }
+  if (target.status !== "approved") {
+    res.status(400).json({ error: "Usuário não está aprovado" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(licenseKeysTable)
+    .set({ userId: target.id, userEmail: target.email })
+    .where(eq(licenseKeysTable.id, paramId(req)))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Key não encontrada" });
+    return;
+  }
+
+  res.json(serializeKey(updated));
+});
+
 // --- Manager accounts (admin only, enforced by requireAdmin above) ---
 
 router.get("/admin/managers", async (_req, res): Promise<void> => {
