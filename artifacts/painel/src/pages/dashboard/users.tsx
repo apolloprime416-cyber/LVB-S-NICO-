@@ -330,6 +330,12 @@ export default function AdminUsers() {
                       <span className="text-xs text-muted-foreground">{m.email}</span>
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
+                      {/* Key count badge */}
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-white/5 border border-white/10 rounded px-2 py-1">
+                        <Key className="w-3 h-3 text-primary" />
+                        <span className="font-mono font-semibold text-foreground">{m.keyCount ?? 0}</span>
+                        <span>key{(m.keyCount ?? 0) !== 1 ? 's' : ''}</span>
+                      </div>
                       {/* canCreateKeys toggle */}
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">Gerar keys</span>

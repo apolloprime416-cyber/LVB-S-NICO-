@@ -1,6 +1,6 @@
 import { Router, type IRouter, raw } from "express";
 import bcrypt from "bcryptjs";
-import { and, eq, desc, gt, sql } from "drizzle-orm";
+import { and, eq, desc, gt, or, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -208,15 +208,21 @@ router.get("/admin/keys", async (req, res): Promise<void> => {
     conditions.push(eq(licenseKeysTable.status, statusFilter));
   }
 
-  // Managers without canCreateKeys permission only see keys THEY created.
-  // Managers with canCreateKeys (or admins) see all keys.
+  // Managers with canCreateKeys see all keys (like admin).
+  // Managers without canCreateKeys see keys they own (userId = me)
+  // OR keys they created (createdById = me) — covers both bought and generated keys.
   if (req.currentUser!.role === "manager") {
     const [mgr] = await db
       .select()
       .from(usersTable)
       .where(eq(usersTable.id, req.currentUser!.id));
     if (!mgr?.canCreateKeys) {
-      conditions.push(eq(licenseKeysTable.createdById, req.currentUser!.id));
+      conditions.push(
+        or(
+          eq(licenseKeysTable.userId, req.currentUser!.id),
+          eq(licenseKeysTable.createdById, req.currentUser!.id),
+        ),
+      );
     }
   }
 
@@ -374,7 +380,17 @@ router.get("/admin/managers", async (_req, res): Promise<void> => {
     .from(usersTable)
     .where(eq(usersTable.role, "manager"))
     .orderBy(desc(usersTable.createdAt));
-  res.json(rows.map((u) => serializeUser(u, 0)));
+
+  const counts = await db
+    .select({
+      userId: licenseKeysTable.userId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(licenseKeysTable)
+    .groupBy(licenseKeysTable.userId);
+  const countMap = new Map(counts.map((c) => [c.userId, c.count]));
+
+  res.json(rows.map((u) => serializeUser(u, countMap.get(u.id) ?? 0)));
 });
 
 router.post("/admin/managers", async (req, res): Promise<void> => {

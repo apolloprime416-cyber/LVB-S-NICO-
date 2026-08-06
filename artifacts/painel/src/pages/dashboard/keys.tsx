@@ -12,8 +12,7 @@ import {
   getGetAdminStatsQueryKey
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +20,25 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MoreVertical, Copy, ShieldAlert, MonitorSmartphone, PowerOff, Trash2, Key, Search, Plus, Check, ArrowRightLeft, UserCheck, UserX } from 'lucide-react';
+import { Loader2, MoreHorizontal, Copy, ShieldAlert, MonitorSmartphone, PowerOff, Trash2, Key, Search, Plus, Check, ArrowRightLeft, UserCheck, UserX } from 'lucide-react';
 import { formatDate, planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
 
-// Plans that require the "canCreateKeys" permission for managers
 const PAID_PLANS = ['daily', 'weekly', 'monthly', 'lifetime'] as const;
+
+const planColor: Record<string, string> = {
+  trial:    'bg-slate-500/15 text-slate-400 border-slate-500/25',
+  daily:    'bg-sky-500/15 text-sky-400 border-sky-500/25',
+  weekly:   'bg-violet-500/15 text-violet-400 border-violet-500/25',
+  monthly:  'bg-blue-500/15 text-blue-400 border-blue-500/25',
+  lifetime: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+};
+
+const statusColor: Record<string, string> = {
+  active:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  inactive: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+  expired:  'bg-red-500/15 text-red-400 border-red-500/25',
+  revoked:  'bg-slate-500/15 text-slate-400 border-slate-500/25',
+};
 
 export default function AdminKeys() {
   const [planFilter, setPlanFilter] = useState<string>('all');
@@ -34,22 +47,19 @@ export default function AdminKeys() {
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   
-  // Session: determines which plans are available in the generator
   const { data: session } = useGetSession();
   const isAdmin = session?.role === 'admin';
   const isManager = session?.role === 'manager';
   const canCreatePaidKeys = isAdmin || (isManager && !!(session as any)?.canCreateKeys);
 
-  // Filters for the query
   const queryParams: any = {};
   if (planFilter !== 'all') queryParams.plan = planFilter;
   if (statusFilter !== 'all') queryParams.status = statusFilter;
 
   const { data: keys, isLoading } = useGetKeys(queryParams);
-  const { data: users } = useGetUsers({ status: 'approved' }); // clients only
-  const { data: managers } = useGetManagers(); // managers for dropdown
+  const { data: users } = useGetUsers({ status: 'approved' });
+  const { data: managers } = useGetManagers();
 
-  // Combined list: approved clients + all managers
   const assignableUsers = useMemo(() => {
     const clients = (users ?? []).map((u: any) => ({ ...u, role: 'client' }));
     const mgrs = (managers ?? []).map((u: any) => ({ ...u, role: 'manager' }));
@@ -64,7 +74,6 @@ export default function AdminKeys() {
   const resetMutation = useResetKeyDevice();
   const deleteMutation = useDeleteKey();
 
-  // Transfer Key state (admin-only)
   const [transferKeyId, setTransferKeyId] = useState<string | null>(null);
   const [transferEmail, setTransferEmail] = useState('');
   const [transferring, setTransferring] = useState(false);
@@ -75,8 +84,7 @@ export default function AdminKeys() {
     return users.find((u: any) => u.email.toLowerCase() === q) ?? null;
   }, [transferEmail, users]);
 
-  // Default plan: if manager without permission, start with trial; otherwise monthly
-  const [genPlan, setGenPlan] = useState<string>(() => 'monthly');
+  const [genPlan, setGenPlan] = useState<string>('monthly');
   const [genQty, setGenQty] = useState<string>('1');
   const [genUser, setGenUser] = useState<string>('none');
   const [generatedKeysResult, setGeneratedKeysResult] = useState<{code: string}[] | null>(null);
@@ -89,7 +97,7 @@ export default function AdminKeys() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(text);
-    toast({ title: 'Copiado para a área de transferência' });
+    toast({ title: 'Key copiada!' });
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
@@ -99,24 +107,12 @@ export default function AdminKeys() {
       toast({ variant: 'destructive', title: 'Quantidade inválida', description: 'Gere entre 1 e 500 keys.' });
       return;
     }
-    // Ensure managers without paid-key permission always send 'trial'
     const effectivePlan = canCreatePaidKeys ? genPlan : 'trial';
-    
     generateMutation.mutate({
-      data: {
-        plan: effectivePlan as any,
-        quantity: qty,
-        userEmail: genUser !== 'none' ? genUser : null
-      }
+      data: { plan: effectivePlan as any, quantity: qty, userEmail: genUser !== 'none' ? genUser : null }
     }, {
-      onSuccess: (data) => {
-        toast({ title: `${data.length} keys geradas com sucesso!` });
-        setGeneratedKeysResult(data);
-        refreshCache();
-      },
-      onError: (err: any) => {
-        toast({ variant: 'destructive', title: 'Erro ao gerar keys', description: err.data?.error });
-      }
+      onSuccess: (data) => { toast({ title: `${data.length} keys geradas!` }); setGeneratedKeysResult(data); refreshCache(); },
+      onError: (err: any) => toast({ variant: 'destructive', title: 'Erro ao gerar keys', description: err.data?.error }),
     });
   };
 
@@ -125,41 +121,25 @@ export default function AdminKeys() {
     setTransferring(true);
     try {
       const res = await fetch(`/api/admin/keys/${transferKeyId}/transfer`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: transferTarget.email }),
       });
       const data = await res.json();
       if (!res.ok) { toast({ variant: 'destructive', title: 'Erro', description: data.error }); return; }
       toast({ title: 'Key transferida', description: `Agora pertence a ${transferTarget.name}.` });
-      setTransferKeyId(null);
-      setTransferEmail('');
-      refreshCache();
+      setTransferKeyId(null); setTransferEmail(''); refreshCache();
     } catch {
       toast({ variant: 'destructive', title: 'Erro de conexão. Tente novamente.' });
-    } finally {
-      setTransferring(false);
-    }
+    } finally { setTransferring(false); }
   };
 
   const handleAction = (id: string, action: 'revoke' | 'reset' | 'delete') => {
-    const mutations = {
-      revoke: revokeMutation,
-      reset: resetMutation,
-      delete: deleteMutation
-    };
-    
+    const mutations = { revoke: revokeMutation, reset: resetMutation, delete: deleteMutation };
     if (action === 'delete' && !confirm('Deletar permanentemente esta key?')) return;
-    
     mutations[action].mutate({ id }, {
-      onSuccess: () => {
-        toast({ title: `Ação (${action}) concluída com sucesso.` });
-        refreshCache();
-      },
-      onError: (err: any) => {
-        toast({ variant: 'destructive', title: 'Erro na ação', description: err.data?.error });
-      }
+      onSuccess: () => { toast({ title: `Ação (${action}) concluída.` }); refreshCache(); },
+      onError: (err: any) => toast({ variant: 'destructive', title: 'Erro', description: err.data?.error }),
     });
   };
 
@@ -170,49 +150,44 @@ export default function AdminKeys() {
       k.code.toLowerCase().includes(q) ||
       (k.userEmail && k.userEmail.toLowerCase().includes(q)) ||
       (k.customerName && k.customerName.toLowerCase().includes(q)) ||
-      (k.customerEmail && k.customerEmail.toLowerCase().includes(q)) ||
-      (k.customerPhone && k.customerPhone.toLowerCase().includes(q))
+      (k.customerEmail && k.customerEmail.toLowerCase().includes(q))
     );
   }, [keys, search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Gestão de Licenças</h1>
-          <p className="text-muted-foreground mt-1">Gere, revogue e monitore keys do sistema</p>
+          <h1 className="text-2xl font-bold tracking-tight">Licenças</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {keys ? `${keys.length} licença${keys.length !== 1 ? 's' : ''} no sistema` : 'Carregando...'}
+          </p>
         </div>
-        
-        <Dialog open={isGenerateOpen} onOpenChange={(open) => {
-          setIsGenerateOpen(open);
-          if(!open) setGeneratedKeysResult(null);
-        }}>
+
+        <Dialog open={isGenerateOpen} onOpenChange={(open) => { setIsGenerateOpen(open); if (!open) setGeneratedKeysResult(null); }}>
           <DialogTrigger asChild>
-            <Button className="font-semibold shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Gerar Keys
+            <Button className="font-semibold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+              <Plus className="w-4 h-4 mr-2" /> Gerar Keys
             </Button>
           </DialogTrigger>
-          <DialogContent className="glass-panel border-white/10 sm:max-w-[500px]">
+          <DialogContent className="glass-panel border-white/10 sm:max-w-[480px]">
             <DialogHeader>
               <DialogTitle>Gerador de Licenças</DialogTitle>
-              <DialogDescription>
-                Crie novas keys soltas ou atribua diretamente a um cliente.
-              </DialogDescription>
+              <DialogDescription>Crie keys soltas ou atribua diretamente a um cliente.</DialogDescription>
             </DialogHeader>
-            
+
             {generatedKeysResult ? (
-              <div className="py-4 space-y-4">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-md text-center">
-                  <ShieldAlert className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                  <h4 className="font-bold text-emerald-400">Keys Geradas com Sucesso</h4>
+              <div className="py-4 space-y-3">
+                <div className="rounded-md bg-emerald-500/10 border border-emerald-500/20 p-3 text-center">
+                  <p className="font-semibold text-emerald-400">{generatedKeysResult.length} keys geradas com sucesso!</p>
                 </div>
-                <div className="max-h-60 overflow-y-auto space-y-2 p-2 bg-black/40 rounded-md border border-white/5">
+                <div className="max-h-52 overflow-y-auto space-y-1.5 p-2 rounded-md bg-black/40 border border-white/5">
                   {generatedKeysResult.map((k, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white/5 p-2 rounded border border-white/5">
-                      <span className="font-mono text-sm tracking-wider text-primary-foreground">{k.code}</span>
-                      <Button variant="ghost" size="sm" className="h-7 hover:bg-white/10" onClick={() => copyToClipboard(k.code)}>
-                        {copiedKey === k.code ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
+                    <div key={i} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded border border-white/5">
+                      <span className="font-mono text-sm tracking-wider">{k.code}</span>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-white/10" onClick={() => copyToClipboard(k.code)}>
+                        {copiedKey === k.code ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                       </Button>
                     </div>
                   ))}
@@ -220,55 +195,35 @@ export default function AdminKeys() {
               </div>
             ) : (
               <div className="py-4 space-y-4">
-                {/* Notice for managers without paid-key permission */}
                 {isManager && !canCreatePaidKeys && (
                   <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-sm text-amber-400">
                     <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
-                    <span>Você só pode gerar keys de <strong>Teste</strong>. Peça ao administrador para ativar a permissão de gerar keys pagas.</span>
+                    <span>Você só pode gerar keys de <strong>Teste</strong>. Solicite ao administrador a permissão para keys pagas.</span>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
                     <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Plano</label>
-                    <Select
-                      value={canCreatePaidKeys ? genPlan : 'trial'}
-                      onValueChange={(v) => { if (canCreatePaidKeys) setGenPlan(v); }}
-                      disabled={!canCreatePaidKeys}
-                    >
-                      <SelectTrigger className="bg-black/20 border-white/10">
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={canCreatePaidKeys ? genPlan : 'trial'} onValueChange={(v) => { if (canCreatePaidKeys) setGenPlan(v); }} disabled={!canCreatePaidKeys}>
+                      <SelectTrigger className="bg-black/20 border-white/10"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {/* Managers without permission: only trial */}
-                        {canCreatePaidKeys ? (
-                          Object.entries(planLabels).map(([val, label]) => (
-                            <SelectItem key={val} value={val}>{label}</SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="trial">{planLabels['trial']}</SelectItem>
-                        )}
+                        {canCreatePaidKeys
+                          ? Object.entries(planLabels).map(([val, label]) => <SelectItem key={val} value={val}>{label}</SelectItem>)
+                          : <SelectItem value="trial">{planLabels['trial']}</SelectItem>}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Quantidade</label>
-                    <Input 
-                      type="number" 
-                      min="1" max="500" 
-                      value={genQty} 
-                      onChange={e => setGenQty(e.target.value)} 
-                      className="bg-black/20 border-white/10"
-                    />
+                    <Input type="number" min="1" max="500" value={genQty} onChange={e => setGenQty(e.target.value)} className="bg-black/20 border-white/10" />
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Atribuir ao Cliente (Opcional)</label>
                   <Select value={genUser} onValueChange={setGenUser}>
-                    <SelectTrigger className="bg-black/20 border-white/10">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="bg-black/20 border-white/10"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Não atribuir (Key solta)</SelectItem>
+                      <SelectItem value="none">Não atribuir (key solta)</SelectItem>
                       {assignableUsers.map(u => (
                         <SelectItem key={u.email} value={u.email}>
                           {u.name} ({u.email}){u.role === 'manager' ? ' — Gerente' : ''}
@@ -279,15 +234,12 @@ export default function AdminKeys() {
                 </div>
               </div>
             )}
-            
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsGenerateOpen(false)} className="border-white/10">
-                {generatedKeysResult ? 'Fechar' : 'Cancelar'}
-              </Button>
+              <Button variant="outline" onClick={() => setIsGenerateOpen(false)} className="border-white/10">{generatedKeysResult ? 'Fechar' : 'Cancelar'}</Button>
               {!generatedKeysResult && (
                 <Button onClick={handleGenerate} disabled={generateMutation.isPending}>
-                  {generateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Gerar Keys
+                  {generateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Gerar
                 </Button>
               )}
             </DialogFooter>
@@ -295,253 +247,194 @@ export default function AdminKeys() {
         </Dialog>
       </div>
 
-      <Card className="glass-panel border-white/10">
-        <CardHeader className="border-b border-white/5 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por key, revendedor, nome, e-mail ou telefone..." 
-              className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary font-mono text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-2">
-            <Select value={planFilter} onValueChange={setPlanFilter}>
-              <SelectTrigger className="w-[180px] bg-black/20 border-white/10">
-                <SelectValue placeholder="Plano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Planos</SelectItem>
-                <SelectItem value="trial">Teste 15 min</SelectItem>
-                <SelectItem value="daily">Diário</SelectItem>
-                <SelectItem value="weekly">Semanal</SelectItem>
-                <SelectItem value="monthly">Mensal</SelectItem>
-                <SelectItem value="lifetime">Vitalício</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-black/20 border-white/10">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="inactive">Inativas</SelectItem>
-                <SelectItem value="active">Ativas</SelectItem>
-                <SelectItem value="expired">Expiradas</SelectItem>
-                <SelectItem value="revoked">Revogadas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar key, e-mail, cliente..."
+            className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary font-mono text-sm h-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={planFilter} onValueChange={setPlanFilter}>
+          <SelectTrigger className="w-[150px] bg-black/20 border-white/10 h-9"><SelectValue placeholder="Plano" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os planos</SelectItem>
+            <SelectItem value="trial">Teste</SelectItem>
+            <SelectItem value="daily">Diário</SelectItem>
+            <SelectItem value="weekly">Semanal</SelectItem>
+            <SelectItem value="monthly">Mensal</SelectItem>
+            <SelectItem value="lifetime">Vitalício</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[150px] bg-black/20 border-white/10 h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os status</SelectItem>
+            <SelectItem value="inactive">Inativas</SelectItem>
+            <SelectItem value="active">Ativas</SelectItem>
+            <SelectItem value="expired">Expiradas</SelectItem>
+            <SelectItem value="revoked">Revogadas</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Keys list */}
+      <Card className="glass-panel border-white/10 overflow-hidden">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <Loader2 className="w-7 h-7 text-primary animate-spin" />
             </div>
           ) : filteredKeys.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-              <Key className="w-12 h-12 mb-4 opacity-20" />
-              <p>Nenhuma licença encontrada.</p>
+              <Key className="w-10 h-10 mb-3 opacity-20" />
+              <p className="text-sm">Nenhuma licença encontrada.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-white/[0.02]">
-                  <TableRow className="border-white/5 hover:bg-transparent">
-                    <TableHead className="font-semibold">Key / Licença</TableHead>
-                    <TableHead className="font-semibold">Plano</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Conta (revendedor)</TableHead>
-                    <TableHead className="font-semibold">Cliente final</TableHead>
-                    <TableHead className="font-semibold">Dispositivo HWID</TableHead>
-                    <TableHead className="font-semibold">Expira em</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredKeys.map((key) => (
-                    <TableRow key={key.id} className="border-white/5 hover:bg-white/[0.02] transition-colors">
-                      <TableCell>
-                        <div className="flex items-center gap-2 group">
-                          <span className="font-mono text-sm text-primary-foreground tracking-wider bg-black/40 px-2 py-1 rounded border border-white/5">
-                            {key.code.substring(0, 14)}...
-                          </span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 hover:bg-white/10"
-                            onClick={() => copyToClipboard(key.code)}
-                            title="Copiar Key Completa"
-                          >
-                            {copiedKey === key.code ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
-                          </Button>
+            <div className="divide-y divide-white/[0.04]">
+              {filteredKeys.map((key: any) => {
+                const effectiveStatus = key.status;
+                return (
+                  <div key={key.id} className="flex items-center gap-4 px-4 py-3 hover:bg-white/[0.02] transition-colors group">
+                    {/* Key code + copy */}
+                    <div className="flex items-center gap-2 min-w-0 w-52 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(key.code)}
+                        title="Copiar key completa"
+                        className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-foreground/80 bg-black/30 border border-white/5 rounded px-2 py-1.5 hover:border-primary/40 hover:text-primary transition-colors truncate max-w-full"
+                      >
+                        <span className="truncate">{key.code.substring(0, 16)}…</span>
+                        {copiedKey === key.code
+                          ? <Check className="w-3 h-3 shrink-0 text-emerald-400" />
+                          : <Copy className="w-3 h-3 shrink-0 opacity-40 group-hover:opacity-100" />}
+                      </button>
+                    </div>
+
+                    {/* Plan badge */}
+                    <Badge className={`shrink-0 text-[11px] font-medium border ${planColor[key.plan] ?? planColor.trial}`}>
+                      {(planLabels[key.plan] ?? key.plan).split('—')[0].trim()}
+                    </Badge>
+
+                    {/* Status badge */}
+                    <Badge className={`shrink-0 text-[11px] font-medium border ${statusColor[effectiveStatus] ?? 'bg-slate-500/15 text-slate-400 border-slate-500/25'}`}>
+                      {statusLabels[effectiveStatus] ?? effectiveStatus}
+                    </Badge>
+
+                    {/* Owner */}
+                    <div className="flex-1 min-w-0">
+                      {key.userEmail ? (
+                        <div className="flex flex-col">
+                          <span className="text-sm text-foreground/80 truncate">{key.userEmail}</span>
+                          {(key.customerName || key.customerEmail) && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {key.customerName}{key.customerName && key.customerEmail ? ' · ' : ''}{key.customerEmail}
+                            </span>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-medium">{(planLabels[key.plan] ?? key.plan ?? '-').split('—')[0].trim()}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          className={
-                            key.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                            key.status === 'inactive' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                            key.status === 'expired' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                          }
-                        >
-                          {statusLabels[key.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {key.userEmail ? (
-                          <span className="text-sm text-foreground/80 truncate max-w-[150px] inline-block" title={key.userEmail}>
-                            {key.userEmail}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic tracking-wider uppercase">Não atribuída</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Não atribuída</span>
+                      )}
+                    </div>
+
+                    {/* HWID */}
+                    <div className="hidden lg:flex items-center gap-1.5 w-24 shrink-0">
+                      {key.deviceFingerprint ? (
+                        <>
+                          <MonitorSmartphone className="w-3.5 h-3.5 text-primary shrink-0" />
+                          <span className="font-mono text-xs text-foreground/60 truncate">{key.deviceFingerprint.substring(0, 8)}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Livre</span>
+                      )}
+                    </div>
+
+                    {/* Expiry */}
+                    <div className="hidden md:block w-28 shrink-0 text-right">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {effectiveStatus === 'active' ? formatTimeLeft(key.expiresAt) : '—'}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="glass-panel border-white/10 min-w-[180px]">
+                        {isAdmin && (
+                          <DropdownMenuItem onClick={() => { setTransferKeyId(key.id); setTransferEmail(''); }} className="text-primary hover:text-primary hover:bg-primary/10 cursor-pointer">
+                            <ArrowRightLeft className="mr-2 h-4 w-4" /> Transferir
+                          </DropdownMenuItem>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {(key as any).customerName || (key as any).customerEmail || (key as any).customerPhone ? (
-                          <div className="flex flex-col max-w-[180px]">
-                            {(key as any).customerName && <span className="text-sm text-foreground/90 truncate" title={(key as any).customerName}>{(key as any).customerName}</span>}
-                            {(key as any).customerEmail && <span className="text-xs text-muted-foreground truncate" title={(key as any).customerEmail}>{(key as any).customerEmail}</span>}
-                            {(key as any).customerPhone && <span className="text-xs text-muted-foreground truncate" title={(key as any).customerPhone}>{(key as any).customerPhone}</span>}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
+                        {effectiveStatus !== 'revoked' && (
+                          <DropdownMenuItem onClick={() => handleAction(key.id, 'revoke')} className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 cursor-pointer">
+                            <PowerOff className="mr-2 h-4 w-4" /> Revogar
+                          </DropdownMenuItem>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {key.deviceFingerprint ? (
-                          <div className="flex items-center gap-1.5 text-sm text-foreground/80 font-mono" title={key.deviceFingerprint}>
-                            <MonitorSmartphone className="w-3.5 h-3.5 text-primary" />
-                            {key.deviceFingerprint.substring(0, 8)}...
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
+                        {key.deviceFingerprint && (
+                          <DropdownMenuItem onClick={() => handleAction(key.id, 'reset')} className="hover:bg-white/5 cursor-pointer">
+                            <MonitorSmartphone className="mr-2 h-4 w-4" /> Resetar HWID
+                          </DropdownMenuItem>
                         )}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {key.status === 'active' ? formatTimeLeft(key.expiresAt) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="glass-panel border-white/10 min-w-[200px]">
-                            {/* Admin-only: Transfer key */}
-                            {isAdmin && (
-                              <DropdownMenuItem
-                                onClick={() => { setTransferKeyId(key.id); setTransferEmail(''); }}
-                                className="text-primary hover:text-primary hover:bg-primary/10 cursor-pointer"
-                              >
-                                <ArrowRightLeft className="mr-2 h-4 w-4" /> Transferir Key
-                              </DropdownMenuItem>
-                            )}
-                            {key.status !== 'revoked' && (
-                              <DropdownMenuItem onClick={() => handleAction(key.id, 'revoke')} className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 cursor-pointer">
-                                <PowerOff className="mr-2 h-4 w-4" /> Revogar Licença
-                              </DropdownMenuItem>
-                            )}
-                            {key.deviceFingerprint && (
-                              <DropdownMenuItem onClick={() => handleAction(key.id, 'reset')} className="hover:bg-white/5 cursor-pointer">
-                                <MonitorSmartphone className="mr-2 h-4 w-4" /> Resetar HWID
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator className="bg-white/10" />
-                            <DropdownMenuItem onClick={() => handleAction(key.id, 'delete')} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
-                              <Trash2 className="mr-2 h-4 w-4" /> Deletar Definitivo
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        <DropdownMenuSeparator className="bg-white/10" />
+                        <DropdownMenuItem onClick={() => handleAction(key.id, 'delete')} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer">
+                          <Trash2 className="mr-2 h-4 w-4" /> Deletar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
+        {filteredKeys.length > 0 && (
+          <CardHeader className="border-t border-white/5 py-2 px-4">
+            <p className="text-xs text-muted-foreground">{filteredKeys.length} resultado{filteredKeys.length !== 1 ? 's' : ''}</p>
+          </CardHeader>
+        )}
       </Card>
-      {/* ── Transfer Key Dialog (admin only) ── */}
+
+      {/* Transfer dialog (admin only) */}
       <Dialog open={transferKeyId !== null} onOpenChange={(o) => { if (!o) { setTransferKeyId(null); setTransferEmail(''); } }}>
-        <DialogContent className="glass-panel border-white/10 sm:max-w-[420px]">
+        <DialogContent className="glass-panel border-white/10 sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ArrowRightLeft className="w-5 h-5 text-primary" /> Transferir Key
-            </DialogTitle>
-            <DialogDescription>
-              Atribua esta licença a qualquer usuário ou gerente cadastrado. A key passará a ser visível no painel dele.
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="w-4 h-4 text-primary" /> Transferir Key</DialogTitle>
+            <DialogDescription>Atribua esta licença a outro usuário ou gerente cadastrado.</DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Email input */}
-            <div className="space-y-1.5">
-              <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">E-mail do destinatário</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="usuario@email.com"
-                  className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary"
-                  value={transferEmail}
-                  onChange={(e) => setTransferEmail(e.target.value)}
-                  autoComplete="off"
-                />
-              </div>
+          <div className="space-y-3 py-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="E-mail do destinatário" className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary" value={transferEmail} onChange={(e) => setTransferEmail(e.target.value)} autoComplete="off" />
             </div>
-
-            {/* Lookup result card */}
             {transferEmail.trim().length > 3 && (
               transferTarget ? (
-                <div className={`rounded-lg border px-4 py-3 space-y-1 transition-all
-                  ${transferTarget.status === 'approved'
-                    ? 'border-emerald-500/30 bg-emerald-500/5'
-                    : 'border-amber-500/30 bg-amber-500/5'}`}
-                >
+                <div className={`rounded-lg border px-3 py-2.5 ${transferTarget.status === 'approved' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
                   <div className="flex items-center gap-2">
-                    {transferTarget.status === 'approved'
-                      ? <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                      : <UserX className="w-4 h-4 text-amber-400 shrink-0" />}
-                    <span className="font-semibold text-sm text-foreground">{transferTarget.name}</span>
-                    <span className="text-xs text-muted-foreground ml-auto capitalize">
-                      {transferTarget.role === 'manager' ? 'Gerente' : 'Cliente'}
-                    </span>
+                    {transferTarget.status === 'approved' ? <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" /> : <UserX className="w-4 h-4 text-amber-400 shrink-0" />}
+                    <span className="font-medium text-sm">{transferTarget.name}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">{(transferTarget as any).role === 'manager' ? 'Gerente' : 'Cliente'}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground pl-6">{transferTarget.email}</p>
-                  {(transferTarget as any).phone && (
-                    <p className="text-xs text-muted-foreground pl-6">{(transferTarget as any).phone}</p>
-                  )}
-                  {transferTarget.status !== 'approved' && (
-                    <p className="text-xs text-amber-400 pl-6 mt-1">Cadastro não aprovado — não é possível transferir.</p>
-                  )}
+                  <p className="text-xs text-muted-foreground pl-6 mt-0.5">{transferTarget.email}</p>
+                  {transferTarget.status !== 'approved' && <p className="text-xs text-amber-400 pl-6 mt-1">Cadastro não aprovado.</p>}
                 </div>
               ) : (
-                <div className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 flex items-center gap-2 text-muted-foreground text-sm">
-                  <UserX className="w-4 h-4 shrink-0" />
-                  E-mail não encontrado no sistema
+                <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 flex items-center gap-2 text-muted-foreground text-sm">
+                  <UserX className="w-4 h-4" /> E-mail não encontrado
                 </div>
               )
             )}
           </div>
-
           <DialogFooter>
-            <Button variant="outline" className="border-white/10" onClick={() => { setTransferKeyId(null); setTransferEmail(''); }}>
-              Cancelar
-            </Button>
-            <Button
-              disabled={!transferTarget || transferTarget.status !== 'approved' || transferring}
-              onClick={handleTransfer}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {transferring
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Transferindo...</>
-                : <><ArrowRightLeft className="w-4 h-4 mr-2" /> Confirmar Transferência</>}
+            <Button variant="outline" className="border-white/10" onClick={() => { setTransferKeyId(null); setTransferEmail(''); }}>Cancelar</Button>
+            <Button disabled={!transferTarget || transferTarget.status !== 'approved' || transferring} onClick={handleTransfer}>
+              {transferring ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Transferindo...</> : <><ArrowRightLeft className="w-4 h-4 mr-2" /> Confirmar</>}
             </Button>
           </DialogFooter>
         </DialogContent>

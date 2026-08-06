@@ -84,6 +84,9 @@ export async function settlePayment(
         status: "inactive",
         userId: payment.userId,
         userEmail: payment.userEmail,
+        // createdById = buyer's userId so the key appears in their panel
+        // (GET /admin/keys for managers, GET /me/keys for clients both use this)
+        createdById: payment.userId,
       })
       .returning({ id: licenseKeysTable.id });
 
