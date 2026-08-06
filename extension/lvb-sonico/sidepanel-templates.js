@@ -189,34 +189,6 @@ function spTemplateLicenseGate() {
 
     '<div class="sp-gate-actions">' +
 
-      (function(){
-        var s = (window.TS_BRANDING_CONFIG || {});
-        var label = s.supportLabel || 'Obter suporte';
-        var url = s.supportUrl || ((window.getBrandWhatsappLink && window.getBrandWhatsappLink("support")) || "https://wa.me/5511974469916");
-        var defaultMsg = 'Olá! Preciso de suporte para a extensão ' + ((window.tsBrandName && window.tsBrandName()) || 'LVB Sônico') + '.';
-        var href = url;
-        try {
-          if (/^https?:\/\/(wa\.me|api\.whatsapp\.com)/i.test(url) && url.indexOf('text=') === -1) {
-            href = url + (url.indexOf('?') === -1 ? '?' : '&') + 'text=' + encodeURIComponent(defaultMsg);
-          }
-        } catch(_) {}
-        return '<a class="sp-glass-card" data-ts-support href="' + href + '" target="_blank" rel="noopener">' +
-          '<div class="sp-glass-icon">' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>' +
-          '</div>' +
-          '<div class="sp-glass-content">' +
-            '<span class="sp-glass-title">' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M18.36 19.36a9 9 0 1 0-12.72 0"/><path d="M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M3 18v-2a2 2 0 0 1 2-2h2"/><path d="M21 18v-2a2 2 0 0 0-2-2h-2"/></svg>' +
-              spEscapeHtml(label) +
-            '</span>' +
-            '<span class="sp-glass-sub">Fale com nossa equipe e tire suas dúvidas.</span>' +
-          '</div>' +
-          '<div class="sp-glass-arrow">' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>' +
-          '</div>' +
-        '</a>';
-      })() +
-
     '</div>' +
     '<div class="sp-log" id="sp-license-log"></div>' +
   '</div>';
@@ -234,15 +206,6 @@ function spTemplateMainUI(greeting, statusBadge) {
         '</div>' +
 
         '<div class="sp-profile-actions">' +
-          '<button class="sp-profile-action sp-help-btn" title="Ajuda">' +
-
-  '<svg class="sp-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-    '<circle cx="12" cy="12" r="10"/>' +
-    '<path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/>' +
-    '<line x1="12" y1="17" x2="12.01" y2="17"/>' +
-  '</svg>' +
-
-'</button>' +
           '<button class="sp-profile-action sp-notif-btn" title="Notificações">' +
 
   '<svg class="sp-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +

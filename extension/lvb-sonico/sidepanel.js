@@ -586,25 +586,9 @@ if (loginThemeBtn) {
   return;
 }
 
-const loginHelpBtn = e.target.closest('#sp-login-help-btn');
-if (loginHelpBtn) {
-  var _su1 = (window.TS_BRANDING_CONFIG && window.TS_BRANDING_CONFIG.supportUrl) || (window.getBrandWhatsappLink && window.getBrandWhatsappLink('support')) || 'https://wa.me/5511974469916';
-  window.open(_su1, '_blank');
-  return;
-}
-
-  const helpBtn = e.target.closest('.sp-help-btn');
-
-if (helpBtn) {
-  var _su2 = (window.TS_BRANDING_CONFIG && window.TS_BRANDING_CONFIG.supportUrl) || (window.getBrandWhatsappLink && window.getBrandWhatsappLink('support')) || 'https://wa.me/5511974469916';
-  window.open(_su2, '_blank');
-  return;
-}
-
 const buyBtn = e.target.closest('.sp-buy-btn');
 if (buyBtn) {
-  const msg = encodeURIComponent('Olá! Quero comprar uma chave de licença para a extensão.');
-  window.open(((window.getBrandWhatsappLink && window.getBrandWhatsappLink('sales')) || 'https://wa.me/5511974469916') + '?text=' + msg, '_blank');
+  window.open((window.LVB_API_BASE || 'https://lvbsonic.replit.app') + '/planos', '_blank');
   return;
 }
 
@@ -1311,13 +1295,6 @@ licenseKey = key;
               '</svg>' +
             '</button>' +
 
-            '<button class="sp-profile-action sp-help-btn" title="Ajuda">' +
-              '<svg class="sp-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
-                '<circle cx="12" cy="12" r="9"/>' +
-                '<path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-1 .4-1.5 1-1.5 2"/>' +
-                '<circle cx="12" cy="17" r="0.7" fill="currentColor" stroke="none"/>' +
-              '</svg>' +
-            '</button>' +
 
             '<button class="sp-profile-action sp-notif-btn" title="Notificações">' +
               '<svg class="sp-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +

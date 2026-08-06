@@ -152,7 +152,6 @@ function templateMainUI(greeting, statusBadge, minimized) {
     '</div>' +
   '<div id="ql-footer" class="ql-footer">' +
     '<div class="ql-footer-row">' +
-      '<a href="' + ((window.getBrandWhatsappLink && window.getBrandWhatsappLink("support")) || "https://wa.me/5591985837992") + '" data-ts-wa="support" target="_blank" class="ql-support-link">' + SVG_ICONS.headphones + ' Suporte</a>' +
       '<span class="ql-footer-version">v4.0</span>' +
     '</div>' +
     '<span class="ql-badge-mz" data-ts-brand="footer"><span style="vertical-align:middle;display:inline-flex">' + SVG_ICONS.zap + '</span> Desenvolvido por ' + ((window.tsBrandName && window.tsBrandName()) || 'LVB Sônico') + '</span>' +

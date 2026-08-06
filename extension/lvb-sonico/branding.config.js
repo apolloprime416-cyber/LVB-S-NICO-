@@ -28,8 +28,8 @@
     brandName: "LVB Sônico",
     primaryColor: "#3B82F6",
     whatsappLinks: {
-      support: "https://wa.me/5561998239879",
-      sales: "https://wa.me/5561998239879",
+      support: "",
+      sales: "",
       community: "https://chat.whatsapp.com/EV6U95tS01t3pu2SSWwvj7"
     }
   };
