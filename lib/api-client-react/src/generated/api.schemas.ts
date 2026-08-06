@@ -48,6 +48,65 @@ export interface KeyCustomerInput {
   customerName?: string | null;
   /** @nullable */
   customerEmail?: string | null;
+  /** @nullable */
+  customerPhone?: string | null;
+}
+
+export interface ManagerInput {
+  /** @minLength 2 */
+  name: string;
+  email: string;
+  /** @minLength 6 */
+  password: string;
+}
+
+export type PromotionInputPlan = typeof PromotionInputPlan[keyof typeof PromotionInputPlan];
+
+
+export const PromotionInputPlan = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  lifetime: 'lifetime',
+} as const;
+
+export interface PromotionInput {
+  plan: PromotionInputPlan;
+  /** @minimum 50 */
+  priceCents: number;
+  /**
+     * @minimum 1
+     * @maximum 8760
+     */
+  durationHours: number;
+  /** @nullable */
+  bannerText?: string | null;
+}
+
+export type PromotionPlan = typeof PromotionPlan[keyof typeof PromotionPlan];
+
+
+export const PromotionPlan = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  lifetime: 'lifetime',
+} as const;
+
+export interface Promotion {
+  id: string;
+  plan: PromotionPlan;
+  priceCents: number;
+  /** @nullable */
+  bannerText: string | null;
+  endsAt: string;
+  createdAt: string;
+  active: boolean;
+}
+
+export interface PlanPriceInput {
+  /** @minimum 50 */
+  priceCents: number;
 }
 
 export interface ValidateInput {
@@ -92,6 +151,7 @@ export type SessionUserRole = typeof SessionUserRole[keyof typeof SessionUserRol
 
 export const SessionUserRole = {
   admin: 'admin',
+  manager: 'manager',
   client: 'client',
 } as const;
 
@@ -122,6 +182,7 @@ export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 export const UserRole = {
   admin: 'admin',
+  manager: 'manager',
   client: 'client',
 } as const;
 
@@ -180,6 +241,8 @@ export interface Key {
   customerName?: string | null;
   /** @nullable */
   customerEmail?: string | null;
+  /** @nullable */
+  customerPhone?: string | null;
   /** @nullable */
   activatedAt?: string | null;
   /** @nullable */

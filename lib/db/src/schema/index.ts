@@ -21,3 +21,4 @@ export * from "./users";
 export * from "./licenseKeys";
 export * from "./extensionFiles";
 export * from "./payments";
+export * from "./promotions";

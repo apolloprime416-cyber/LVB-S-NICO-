@@ -11,4 +11,6 @@ export interface KeyCustomerInput {
   customerName?: string | null;
   /** @nullable */
   customerEmail?: string | null;
+  /** @nullable */
+  customerPhone?: string | null;
 }

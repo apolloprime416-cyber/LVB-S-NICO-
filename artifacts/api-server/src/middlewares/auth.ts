@@ -49,6 +49,21 @@ export async function requireAdmin(
   next();
 }
 
+/** Admin or manager: shared staff area (users, keys, approvals). */
+export async function requireStaff(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const user = await loadUser(req);
+  if (!user || (user.role !== "admin" && user.role !== "manager")) {
+    res.status(401).json({ error: "Acesso restrito à equipe" });
+    return;
+  }
+  req.currentUser = user;
+  next();
+}
+
 export async function requireClient(
   req: Request,
   res: Response,

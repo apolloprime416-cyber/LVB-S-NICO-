@@ -4,14 +4,13 @@ import { db, paymentsTable, licenseKeysTable } from "@workspace/db";
 import { requireClient } from "../middlewares/auth";
 import { generateKeyCode, serializeKey } from "../lib/keys";
 import {
-  PLAN_PRICES_CENTS,
-  PLAN_LABELS,
   isPurchasablePlan,
   createPix,
   getTransaction,
   getWebhookBaseUrl,
   type PushinPayTransaction,
 } from "../lib/pushinpay";
+import { getEffectivePlans, getEffectivePriceCents } from "../lib/pricing";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -162,16 +161,9 @@ async function checkWithProvider(
 }
 
 /** Public: list of purchasable plans with prices (used by the pricing page). */
-router.get("/public/plans", (_req, res): void => {
-  res.json(
-    (Object.keys(PLAN_PRICES_CENTS) as (keyof typeof PLAN_PRICES_CENTS)[]).map(
-      (plan) => ({
-        plan,
-        label: PLAN_LABELS[plan],
-        priceCents: PLAN_PRICES_CENTS[plan],
-      }),
-    ),
-  );
+router.get("/public/plans", async (_req, res): Promise<void> => {
+  const plans = await getEffectivePlans();
+  res.json(plans);
 });
 
 /** Create a PIX charge for a plan. */
@@ -189,7 +181,7 @@ router.post("/me/payments", requireClient, async (req, res): Promise<void> => {
     return;
   }
   try {
-    const expected = PLAN_PRICES_CENTS[plan];
+    const expected = await getEffectivePriceCents(plan);
     const webhookUrl = `${getWebhookBaseUrl()}/api/public/pushinpay-webhook`;
     const tx = await createPix(expected, webhookUrl);
     if (Number(tx.value) !== expected) {

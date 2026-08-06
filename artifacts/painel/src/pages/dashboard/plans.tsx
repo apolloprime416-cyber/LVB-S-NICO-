@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Copy, Check, QrCode, ShoppingCart } from 'lucide-react';
+import { Loader2, Copy, Check, QrCode, ShoppingCart, Sparkles } from 'lucide-react';
 
 interface PlanInfo {
   plan: string;
   label: string;
   priceCents: number;
+  basePriceCents: number;
+  promo: { priceCents: number; endsAt: string; bannerText: string | null } | null;
 }
 
 interface PaymentInfo {
@@ -195,6 +197,19 @@ export default function Plans() {
         </p>
       </div>
 
+      {plans.some((p) => p.promo) && (
+        <div className="rounded-lg border border-primary/40 bg-primary/10 p-4 flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+          <div>
+            <h4 className="font-semibold text-primary">Promoção ativa</h4>
+            <p className="text-sm text-primary/90 mt-0.5">
+              {plans.find((p) => p.promo)?.promo?.bannerText ||
+                `Aproveite: ${plans.filter((p) => p.promo).map((p) => `${p.label} por ${formatPrice(p.promo!.priceCents)}`).join(', ')} por tempo limitado.`}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((p) => {
           const highlight = p.plan === 'lifetime';
@@ -212,8 +227,14 @@ export default function Plans() {
                 <CardTitle className="text-base">{p.label}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col flex-1 gap-4">
-                <div>
-                  <span className="text-3xl font-extrabold tracking-tight">{formatPrice(p.priceCents)}</span>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  {p.promo && p.basePriceCents > p.priceCents && (
+                    <span className="text-sm text-muted-foreground line-through">{formatPrice(p.basePriceCents)}</span>
+                  )}
+                  <span className={`text-3xl font-extrabold tracking-tight ${p.promo ? 'text-primary' : ''}`}>{formatPrice(p.priceCents)}</span>
+                  {p.promo && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/30 px-1.5 py-0.5 rounded">Promoção</span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground flex-1">{PLAN_DESCRIPTIONS[p.plan] ?? ''}</p>
                 <Button

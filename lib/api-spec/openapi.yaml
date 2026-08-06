@@ -468,6 +468,150 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
 
+  /admin/managers:
+    get:
+      operationId: getManagers
+      tags: [admin]
+      summary: List manager accounts (admin only)
+      responses:
+        "200":
+          description: Managers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createManager
+      tags: [admin]
+      summary: Create a manager account (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManagerInput"
+      responses:
+        "201":
+          description: Manager created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /admin/managers/{id}:
+    delete:
+      operationId: deleteManager
+      tags: [admin]
+      summary: Delete a manager account (admin only)
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /admin/promotions:
+    get:
+      operationId: getPromotions
+      tags: [admin]
+      summary: List promotions (admin only)
+      responses:
+        "200":
+          description: Promotions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Promotion"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createPromotion
+      tags: [admin]
+      summary: Create a promotion (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromotionInput"
+      responses:
+        "201":
+          description: Promotion created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Promotion"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /admin/promotions/{id}:
+    delete:
+      operationId: deletePromotion
+      tags: [admin]
+      summary: Delete a promotion (admin only)
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /admin/plans/{plan}/price:
+    put:
+      operationId: setPlanPrice
+      tags: [admin]
+      summary: Change the base price of a plan (admin only)
+      parameters:
+        - name: plan
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, lifetime]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanPriceInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResult"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+
   /public/reset-key:
     post:
       operationId: publicResetKey
@@ -593,6 +737,65 @@ components:
           type: ["string", "null"]
         customerEmail:
           type: ["string", "null"]
+        customerPhone:
+          type: ["string", "null"]
+    ManagerInput:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+    PromotionInput:
+      type: object
+      required: [plan, priceCents, durationHours]
+      properties:
+        plan:
+          type: string
+          enum: [daily, weekly, monthly, lifetime]
+        priceCents:
+          type: integer
+          minimum: 50
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 8760
+        bannerText:
+          type: ["string", "null"]
+    Promotion:
+      type: object
+      required: [id, plan, priceCents, bannerText, endsAt, createdAt, active]
+      properties:
+        id:
+          type: string
+        plan:
+          type: string
+          enum: [daily, weekly, monthly, lifetime]
+        priceCents:
+          type: integer
+        bannerText:
+          type: ["string", "null"]
+        endsAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+    PlanPriceInput:
+      type: object
+      required: [priceCents]
+      properties:
+        priceCents:
+          type: integer
+          minimum: 50
     ValidateInput:
       type: object
       required: [code, fingerprint]
@@ -638,7 +841,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, client]
+          enum: [admin, manager, client]
         status:
           type: string
           enum: [pending, approved, rejected]
@@ -654,7 +857,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, client]
+          enum: [admin, manager, client]
         status:
           type: string
           enum: [pending, approved, rejected]
@@ -686,6 +889,8 @@ components:
         customerName:
           type: ["string", "null"]
         customerEmail:
+          type: ["string", "null"]
+        customerPhone:
           type: ["string", "null"]
         activatedAt:
           type: ["string", "null"]

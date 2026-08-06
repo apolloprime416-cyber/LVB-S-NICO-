@@ -1,19 +1,24 @@
 import { Router, type IRouter, raw } from "express";
 import bcrypt from "bcryptjs";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, gt, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
   licenseKeysTable,
   extensionFilesTable,
+  promotionsTable,
+  planPricesTable,
 } from "@workspace/db";
 import {
   GetUsersQueryParams,
   SetUserPasswordBody,
   GetKeysQueryParams,
   GenerateKeysBody,
+  CreateManagerBody,
+  CreatePromotionBody,
+  SetPlanPriceBody,
 } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdmin, requireStaff } from "../middlewares/auth";
 import { serializeUser } from "../lib/users";
 import {
   serializeKey,
@@ -25,7 +30,12 @@ import {
 
 const router: IRouter = Router();
 
-router.use("/admin", requireAdmin);
+// Admin-only areas: manager accounts and promotions/pricing.
+router.use("/admin/managers", requireAdmin);
+router.use("/admin/promotions", requireAdmin);
+router.use("/admin/plans", requireAdmin);
+// Everything else under /admin is shared between admin and managers.
+router.use("/admin", requireStaff);
 
 function paramId(req: { params: Record<string, string | string[]> }): string {
   const raw = req.params.id;
@@ -260,6 +270,151 @@ router.delete("/admin/keys/:id", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// --- Manager accounts (admin only, enforced by requireAdmin above) ---
+
+router.get("/admin/managers", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.role, "manager"))
+    .orderBy(desc(usersTable.createdAt));
+  res.json(rows.map((u) => serializeUser(u, 0)));
+});
+
+router.post("/admin/managers", async (req, res): Promise<void> => {
+  const parsed = CreateManagerBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Preencha nome, e-mail e senha (mínimo 6 caracteres)" });
+    return;
+  }
+  const email = parsed.data.email.toLowerCase().trim();
+  const [existing] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+  if (existing) {
+    res.status(400).json({ error: "Este e-mail já está cadastrado" });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  const [created] = await db
+    .insert(usersTable)
+    .values({
+      name: parsed.data.name.trim(),
+      email,
+      passwordHash,
+      role: "manager",
+      status: "approved",
+    })
+    .returning();
+  res.status(201).json(serializeUser(created!, 0));
+});
+
+router.delete("/admin/managers/:id", async (req, res): Promise<void> => {
+  const [deleted] = await db
+    .delete(usersTable)
+    .where(
+      and(eq(usersTable.id, paramId(req)), eq(usersTable.role, "manager")),
+    )
+    .returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Gerente não encontrado" });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+// --- Promotions and plan prices (admin only) ---
+
+router.get("/admin/promotions", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select()
+    .from(promotionsTable)
+    .orderBy(desc(promotionsTable.createdAt));
+  const now = Date.now();
+  res.json(
+    rows.map((p) => ({
+      id: p.id,
+      plan: p.plan,
+      priceCents: p.priceCents,
+      bannerText: p.bannerText ?? null,
+      endsAt: p.endsAt.toISOString(),
+      createdAt: p.createdAt.toISOString(),
+      active: p.endsAt.getTime() > now,
+    })),
+  );
+});
+
+router.post("/admin/promotions", async (req, res): Promise<void> => {
+  const parsed = CreatePromotionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Dados da promoção inválidos" });
+    return;
+  }
+  const { plan, priceCents, durationHours } = parsed.data;
+  const endsAt = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+  const bannerText =
+    typeof parsed.data.bannerText === "string" && parsed.data.bannerText.trim()
+      ? parsed.data.bannerText.trim().slice(0, 200)
+      : null;
+  // Only one active promotion per plan: replace any still-active one.
+  const [created] = await db.transaction(async (tx) => {
+    await tx
+      .delete(promotionsTable)
+      .where(
+        and(eq(promotionsTable.plan, plan), gt(promotionsTable.endsAt, new Date())),
+      );
+    return tx
+      .insert(promotionsTable)
+      .values({ plan, priceCents, bannerText, endsAt })
+      .returning();
+  });
+  res.status(201).json({
+    id: created!.id,
+    plan: created!.plan,
+    priceCents: created!.priceCents,
+    bannerText: created!.bannerText ?? null,
+    endsAt: created!.endsAt.toISOString(),
+    createdAt: created!.createdAt.toISOString(),
+    active: true,
+  });
+});
+
+router.delete("/admin/promotions/:id", async (req, res): Promise<void> => {
+  const [deleted] = await db
+    .delete(promotionsTable)
+    .where(eq(promotionsTable.id, paramId(req)))
+    .returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Promoção não encontrada" });
+    return;
+  }
+  res.json({ ok: true });
+});
+
+router.put("/admin/plans/:plan/price", async (req, res): Promise<void> => {
+  const plan = Array.isArray(req.params.plan)
+    ? req.params.plan[0]
+    : req.params.plan;
+  if (!["daily", "weekly", "monthly", "lifetime"].includes(plan)) {
+    res.status(400).json({ error: "Plano inválido" });
+    return;
+  }
+  const parsed = SetPlanPriceBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Preço inválido (mínimo R$ 0,50)" });
+    return;
+  }
+  await db
+    .insert(planPricesTable)
+    .values({ plan, priceCents: parsed.data.priceCents })
+    .onConflictDoUpdate({
+      target: planPricesTable.plan,
+      set: { priceCents: parsed.data.priceCents, updatedAt: new Date() },
+    });
+  res.json({ ok: true });
+});
+
 // --- Extension file management ---
 
 router.get("/admin/extension", async (_req, res): Promise<void> => {
@@ -304,6 +459,7 @@ router.get(
 // filename comes via the X-Filename header (or ?filename=).
 router.put(
   "/admin/extension",
+  requireAdmin, // publishing the extension zip is admin-only (managers can only download)
   raw({ type: () => true, limit: "50mb" }),
   async (req, res): Promise<void> => {
     const body = req.body as Buffer;

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
-import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check, Download, Lock, Package, UserRound, Pencil } from 'lucide-react';
+import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check, Download, Lock, Package, UserRound, Pencil, Search as SearchIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function PainelClient() {
@@ -29,21 +29,27 @@ export default function PainelClient() {
   const [isTrialOpen, setIsTrialOpen] = useState(false);
   const [trialName, setTrialName] = useState('');
   const [trialEmail, setTrialEmail] = useState('');
+  const [trialPhone, setTrialPhone] = useState('');
+
+  // Search over the reseller's keys by customer data
+  const [search, setSearch] = useState('');
 
   // Customer edit dialog (per key)
   const [editKeyId, setEditKeyId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
 
   const openEditCustomer = (key: any) => {
     setEditKeyId(key.id);
     setEditName(key.customerName || '');
     setEditEmail(key.customerEmail || '');
+    setEditPhone(key.customerPhone || '');
   };
 
   const handleSaveCustomer = () => {
     if (!editKeyId) return;
-    updateCustomerMutation.mutate({ id: editKeyId, data: { customerName: editName || null, customerEmail: editEmail || null } }, {
+    updateCustomerMutation.mutate({ id: editKeyId, data: { customerName: editName || null, customerEmail: editEmail || null, customerPhone: editPhone || null } }, {
       onSuccess: () => {
         toast({ title: 'Cliente salvo', description: 'Os dados do cliente foram atualizados nesta key.' });
         setEditKeyId(null);
@@ -63,6 +69,16 @@ export default function PainelClient() {
   };
 
   const hasPaidKeys = keys?.some(k => k.plan !== 'trial' && k.status !== 'revoked');
+
+  const q = search.trim().toLowerCase();
+  const filteredKeys = !q
+    ? keys
+    : keys?.filter((k: any) =>
+        (k.customerName || '').toLowerCase().includes(q) ||
+        (k.customerEmail || '').toLowerCase().includes(q) ||
+        (k.customerPhone || '').toLowerCase().includes(q) ||
+        k.code.toLowerCase().includes(q)
+      );
 
   const [extension, setExtension] = useState<{ available: boolean; unlocked: boolean; filename: string | null } | null>(null);
   useEffect(() => {
@@ -100,12 +116,13 @@ export default function PainelClient() {
   };
 
   const handleGenerateTrial = () => {
-    generateTrialMutation.mutate({ data: { customerName: trialName || null, customerEmail: trialEmail || null } }, {
+    generateTrialMutation.mutate({ data: { customerName: trialName || null, customerEmail: trialEmail || null, customerPhone: trialPhone || null } }, {
       onSuccess: () => {
         toast({ title: 'Teste gerado!', description: 'Sua key de 15 minutos foi gerada.' });
         setIsTrialOpen(false);
         setTrialName('');
         setTrialEmail('');
+        setTrialPhone('');
         queryClient.invalidateQueries({ queryKey: getGetMyKeysQueryKey() });
       },
       onError: (err: any) => {
@@ -201,6 +218,16 @@ export default function PainelClient() {
                     onChange={(e) => setTrialEmail(e.target.value)}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Telefone do cliente</label>
+                  <Input
+                    type="tel"
+                    placeholder="(61) 99999-9999"
+                    className="bg-black/20 border-white/10"
+                    value={trialPhone}
+                    onChange={(e) => setTrialPhone(e.target.value)}
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsTrialOpen(false)} className="border-white/10">Cancelar</Button>
@@ -255,6 +282,18 @@ export default function PainelClient() {
         </Card>
       )}
 
+      {keys && keys.length > 0 && (
+        <div className="relative w-full sm:w-96">
+          <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente por nome, e-mail ou telefone..."
+            className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
+
       {keys && keys.length === 0 ? (
         <Card className="glass-panel border-white/5 bg-black/20 border-dashed border-2 text-center py-16">
           <div className="mx-auto w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
@@ -268,7 +307,10 @@ export default function PainelClient() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {keys?.map((key, index) => (
+          {filteredKeys && filteredKeys.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full">Nenhuma key encontrada para esta busca.</p>
+          )}
+          {filteredKeys?.map((key, index) => (
             <Card 
               key={key.id} 
               className={`glass-panel border-white/10 hover:border-primary/30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 fill-mode-both ${
@@ -319,11 +361,14 @@ export default function PainelClient() {
               <CardContent className="pt-4 space-y-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <UserRound className="w-3.5 h-3.5 text-primary shrink-0" />
-                  {(key as any).customerName || (key as any).customerEmail ? (
-                    <span className="text-sm text-foreground/90 truncate" title={`${(key as any).customerName || ''} ${(key as any).customerEmail || ''}`.trim()}>
-                      {(key as any).customerName || (key as any).customerEmail}
+                  {(key as any).customerName || (key as any).customerEmail || (key as any).customerPhone ? (
+                    <span className="text-sm text-foreground/90 truncate" title={`${(key as any).customerName || ''} ${(key as any).customerEmail || ''} ${(key as any).customerPhone || ''}`.trim()}>
+                      {(key as any).customerName || (key as any).customerEmail || (key as any).customerPhone}
                       {(key as any).customerName && (key as any).customerEmail ? (
                         <span className="text-muted-foreground"> · {(key as any).customerEmail}</span>
+                      ) : null}
+                      {(key as any).customerPhone ? (
+                        <span className="text-muted-foreground"> · {(key as any).customerPhone}</span>
                       ) : null}
                     </span>
                   ) : (
@@ -398,6 +443,16 @@ export default function PainelClient() {
                 className="bg-black/20 border-white/10"
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Telefone do cliente</label>
+              <Input
+                type="tel"
+                placeholder="(61) 99999-9999"
+                className="bg-black/20 border-white/10"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
               />
             </div>
           </div>

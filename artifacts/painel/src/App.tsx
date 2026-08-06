@@ -11,6 +11,7 @@ import Painel from '@/pages/dashboard/client';
 import AdminDashboard from '@/pages/dashboard/admin';
 import AdminUsers from '@/pages/dashboard/users';
 import AdminKeys from '@/pages/dashboard/keys';
+import AdminPromotions from '@/pages/dashboard/promotions';
 import ResetKey from '@/pages/public/reset-key';
 import Plans from '@/pages/dashboard/plans';
 import { useGetSession, getGetSessionQueryKey } from '@workspace/api-client-react';
@@ -44,8 +45,9 @@ function ProtectedRoute({ component: Component, roleRequired, ...rest }: any) {
     return <Redirect to="/login" />;
   }
 
-  if (roleRequired && session.role !== roleRequired) {
-    return <Redirect to={session.role === 'admin' ? '/admin' : '/painel'} />;
+  const allowed: string[] = Array.isArray(roleRequired) ? roleRequired : roleRequired ? [roleRequired] : [];
+  if (allowed.length > 0 && !allowed.includes(session.role)) {
+    return <Redirect to={session.role === 'admin' || session.role === 'manager' ? '/admin' : '/painel'} />;
   }
 
   return (
@@ -73,13 +75,16 @@ function AppRouter() {
         <ProtectedRoute component={Plans} roleRequired="client" />
       </Route>
       <Route path="/admin">
-        <ProtectedRoute component={AdminDashboard} roleRequired="admin" />
+        <ProtectedRoute component={AdminDashboard} roleRequired={['admin', 'manager']} />
       </Route>
       <Route path="/admin/usuarios">
-        <ProtectedRoute component={AdminUsers} roleRequired="admin" />
+        <ProtectedRoute component={AdminUsers} roleRequired={['admin', 'manager']} />
       </Route>
       <Route path="/admin/keys">
-        <ProtectedRoute component={AdminKeys} roleRequired="admin" />
+        <ProtectedRoute component={AdminKeys} roleRequired={['admin', 'manager']} />
+      </Route>
+      <Route path="/admin/promocoes">
+        <ProtectedRoute component={AdminPromotions} roleRequired="admin" />
       </Route>
 
       <Route component={NotFound} />

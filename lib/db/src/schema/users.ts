@@ -7,7 +7,7 @@ export const usersTable = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  // 'admin' | 'client'
+  // 'admin' | 'manager' | 'client'
   role: text("role").notNull().default("client"),
   // 'pending' | 'approved' | 'rejected'
   status: text("status").notNull().default("pending"),

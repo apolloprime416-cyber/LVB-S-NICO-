@@ -24,6 +24,8 @@ export interface Key {
   /** @nullable */
   customerEmail?: string | null;
   /** @nullable */
+  customerPhone?: string | null;
+  /** @nullable */
   activatedAt?: Date | null;
   /** @nullable */
   expiresAt?: Date | null;

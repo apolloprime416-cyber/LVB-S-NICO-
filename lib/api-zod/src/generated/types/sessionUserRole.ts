@@ -11,5 +11,6 @@ export type SessionUserRole = typeof SessionUserRole[keyof typeof SessionUserRol
 
 export const SessionUserRole = {
   admin: 'admin',
+  manager: 'manager',
   client: 'client',
 } as const;

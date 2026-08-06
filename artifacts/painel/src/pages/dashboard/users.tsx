@@ -5,6 +5,11 @@ import {
   useRejectUser, 
   useSetUserPassword, 
   useDeleteUser,
+  useGetSession,
+  useGetManagers,
+  useCreateManager,
+  useDeleteManager,
+  getGetManagersQueryKey,
   getGetUsersQueryKey,
   getGetAdminStatsQueryKey
 } from '@workspace/api-client-react';
@@ -36,6 +41,37 @@ export default function AdminUsers() {
 
   const [passwordDialogId, setPasswordDialogId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+
+  const { data: session } = useGetSession();
+  const isAdmin = session?.role === 'admin';
+  const { data: managers } = useGetManagers({ query: { enabled: isAdmin } as any });
+  const createManagerMutation = useCreateManager();
+  const deleteManagerMutation = useDeleteManager();
+  const [mgrName, setMgrName] = useState('');
+  const [mgrEmail, setMgrEmail] = useState('');
+  const [mgrPassword, setMgrPassword] = useState('');
+
+  const handleCreateManager = () => {
+    createManagerMutation.mutate({ data: { name: mgrName.trim(), email: mgrEmail.trim(), password: mgrPassword } }, {
+      onSuccess: () => {
+        toast({ title: 'Gerente criado com sucesso' });
+        setMgrName(''); setMgrEmail(''); setMgrPassword('');
+        queryClient.invalidateQueries({ queryKey: getGetManagersQueryKey() });
+      },
+      onError: (err: any) => toast({ variant: 'destructive', title: 'Erro ao criar gerente', description: err?.response?.data?.error ?? err?.data?.error ?? 'Verifique os dados e tente novamente.' })
+    });
+  };
+
+  const handleDeleteManager = (id: string) => {
+    if (!confirm('Remover este gerente? Ele perderá o acesso ao painel.')) return;
+    deleteManagerMutation.mutate({ id }, {
+      onSuccess: () => {
+        toast({ title: 'Gerente removido' });
+        queryClient.invalidateQueries({ queryKey: getGetManagersQueryKey() });
+      },
+      onError: () => toast({ variant: 'destructive', title: 'Erro ao remover gerente' })
+    });
+  };
 
   const refreshCache = () => {
     queryClient.invalidateQueries({ queryKey: getGetUsersQueryKey() });
@@ -223,6 +259,43 @@ export default function AdminUsers() {
           )}
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <Card className="glass-panel border-white/10">
+          <CardHeader className="border-b border-white/5 pb-4">
+            <CardTitle className="text-lg">Gerentes</CardTitle>
+            <p className="text-sm text-muted-foreground">Gerentes têm acesso ao painel administrativo: aprovam cadastros, gerenciam usuários e keys. Somente você pode criar gerentes e acessar Promoções.</p>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <Input placeholder="Nome" className="bg-black/20 border-white/10" value={mgrName} onChange={(e) => setMgrName(e.target.value)} />
+              <Input placeholder="E-mail" type="email" className="bg-black/20 border-white/10" value={mgrEmail} onChange={(e) => setMgrEmail(e.target.value)} />
+              <Input placeholder="Senha (mín. 6)" type="password" className="bg-black/20 border-white/10" value={mgrPassword} onChange={(e) => setMgrPassword(e.target.value)} />
+              <Button onClick={handleCreateManager} disabled={createManagerMutation.isPending || mgrName.trim().length < 2 || !mgrEmail.includes('@') || mgrPassword.length < 6}>
+                {createManagerMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Criar
+              </Button>
+            </div>
+            {managers && managers.length > 0 ? (
+              <div className="space-y-2">
+                {managers.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between rounded-md border border-white/10 bg-black/20 px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{m.name}</span>
+                      <span className="text-xs text-muted-foreground">{m.email}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" onClick={() => handleDeleteManager(m.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhum gerente criado ainda.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={!!passwordDialogId} onOpenChange={(open) => !open && setPasswordDialogId(null)}>
         <DialogContent className="glass-panel border-white/10 sm:max-w-[425px]">

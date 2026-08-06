@@ -46,6 +46,7 @@ export function serializeKey(row: LicenseKeyRow) {
     deviceFingerprint: row.deviceFingerprint ?? null,
     customerName: row.customerName ?? null,
     customerEmail: row.customerEmail ?? null,
+    customerPhone: row.customerPhone ?? null,
     activatedAt: row.activatedAt ? row.activatedAt.toISOString() : null,
     expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),

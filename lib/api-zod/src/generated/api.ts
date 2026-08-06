@@ -38,7 +38,7 @@ export const RegisterResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected'])
 }),zod.null()]).optional()
 })
@@ -58,7 +58,7 @@ export const LoginResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected'])
 }),zod.null()]).optional()
 })
@@ -77,7 +77,7 @@ export const VerifyCodeResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected'])
 }),zod.null()]).optional()
 })
@@ -98,7 +98,7 @@ export const GetSessionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected'])
 })
 
@@ -116,6 +116,7 @@ export const GetMyKeysResponseItem = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -140,6 +141,7 @@ export const ActivateKeyResponse = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -163,6 +165,7 @@ export const ResetMyKeyDeviceResponse = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -178,7 +181,8 @@ export const UpdateMyKeyCustomerParams = zod.object({
 
 export const UpdateMyKeyCustomerBody = zod.object({
   "customerName": zod.string().nullish(),
-  "customerEmail": zod.string().nullish()
+  "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish()
 })
 
 export const UpdateMyKeyCustomerResponse = zod.object({
@@ -191,6 +195,7 @@ export const UpdateMyKeyCustomerResponse = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -202,7 +207,8 @@ export const UpdateMyKeyCustomerResponse = zod.object({
  */
 export const GenerateTrialBody = zod.object({
   "customerName": zod.string().nullish(),
-  "customerEmail": zod.string().nullish()
+  "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish()
 })
 
 export const GenerateTrialResponse = zod.object({
@@ -215,6 +221,7 @@ export const GenerateTrialResponse = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -254,7 +261,7 @@ export const GetUsersResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected']),
   "keyCount": zod.int(),
   "createdAt": zod.coerce.date()
@@ -273,7 +280,7 @@ export const ApproveUserResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected']),
   "keyCount": zod.int(),
   "createdAt": zod.coerce.date()
@@ -291,7 +298,7 @@ export const RejectUserResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'client']),
+  "role": zod.enum(['admin', 'manager', 'client']),
   "status": zod.enum(['pending', 'approved', 'rejected']),
   "keyCount": zod.int(),
   "createdAt": zod.coerce.date()
@@ -348,6 +355,7 @@ export const GetKeysResponseItem = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -378,6 +386,7 @@ export const GenerateKeysResponseItem = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -402,6 +411,7 @@ export const RevokeKeyResponse = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -425,6 +435,7 @@ export const ResetKeyDeviceResponse = zod.object({
   "deviceFingerprint": zod.string().nullish(),
   "customerName": zod.string().nullish(),
   "customerEmail": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
   "activatedAt": zod.coerce.date().nullish(),
   "expiresAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -439,6 +450,133 @@ export const DeleteKeyParams = zod.object({
 })
 
 export const DeleteKeyResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary List manager accounts (admin only)
+ */
+export const GetManagersResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'manager', 'client']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "keyCount": zod.int(),
+  "createdAt": zod.coerce.date()
+})
+export const GetManagersResponse = zod.array(GetManagersResponseItem)
+
+
+/**
+ * @summary Create a manager account (admin only)
+ */
+export const createManagerBodyNameMin = 2;
+
+export const createManagerBodyPasswordMin = 6;
+
+
+
+export const CreateManagerBody = zod.object({
+  "name": zod.string().min(createManagerBodyNameMin),
+  "email": zod.email(),
+  "password": zod.string().min(createManagerBodyPasswordMin)
+})
+
+export const CreateManagerResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'manager', 'client']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "keyCount": zod.int(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a manager account (admin only)
+ */
+export const DeleteManagerParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteManagerResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary List promotions (admin only)
+ */
+export const GetPromotionsResponseItem = zod.object({
+  "id": zod.string(),
+  "plan": zod.enum(['daily', 'weekly', 'monthly', 'lifetime']),
+  "priceCents": zod.int(),
+  "bannerText": zod.string().nullable(),
+  "endsAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "active": zod.boolean()
+})
+export const GetPromotionsResponse = zod.array(GetPromotionsResponseItem)
+
+
+/**
+ * @summary Create a promotion (admin only)
+ */
+export const createPromotionBodyPriceCentsMin = 50;
+
+export const createPromotionBodyDurationHoursMax = 8760;
+
+
+
+export const CreatePromotionBody = zod.object({
+  "plan": zod.enum(['daily', 'weekly', 'monthly', 'lifetime']),
+  "priceCents": zod.int().min(createPromotionBodyPriceCentsMin),
+  "durationHours": zod.int().min(1).max(createPromotionBodyDurationHoursMax),
+  "bannerText": zod.string().nullish()
+})
+
+export const CreatePromotionResponse = zod.object({
+  "id": zod.string(),
+  "plan": zod.enum(['daily', 'weekly', 'monthly', 'lifetime']),
+  "priceCents": zod.int(),
+  "bannerText": zod.string().nullable(),
+  "endsAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Delete a promotion (admin only)
+ */
+export const DeletePromotionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeletePromotionResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Change the base price of a plan (admin only)
+ */
+export const SetPlanPriceParams = zod.object({
+  "plan": zod.enum(['daily', 'weekly', 'monthly', 'lifetime'])
+})
+
+export const setPlanPriceBodyPriceCentsMin = 50;
+
+
+
+export const SetPlanPriceBody = zod.object({
+  "priceCents": zod.int().min(setPlanPriceBodyPriceCentsMin)
+})
+
+export const SetPlanPriceResponse = zod.object({
   "ok": zod.boolean()
 })
 

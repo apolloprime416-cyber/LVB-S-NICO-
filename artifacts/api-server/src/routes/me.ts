@@ -127,6 +127,13 @@ function cleanCustomerEmail(value: unknown): string | null | undefined {
   return v;
 }
 
+/** Keeps only phone-friendly characters; null when empty. */
+function cleanCustomerPhone(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const v = value.replace(/[^\d+()\-\s]/g, "").trim().slice(0, 30);
+  return v.length > 0 ? v : null;
+}
+
 router.patch(
   "/me/keys/:id/customer",
   requireClient,
@@ -155,6 +162,7 @@ router.patch(
       .set({
         customerName: cleanCustomerField(req.body?.customerName),
         customerEmail,
+        customerPhone: cleanCustomerPhone(req.body?.customerPhone),
       })
       .where(eq(licenseKeysTable.id, key.id))
       .returning();
@@ -200,6 +208,7 @@ router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
       userEmail: req.currentUser!.email,
       customerName: cleanCustomerField(req.body?.customerName),
       customerEmail: trialCustomerEmail,
+      customerPhone: cleanCustomerPhone(req.body?.customerPhone),
     })
     .returning();
 

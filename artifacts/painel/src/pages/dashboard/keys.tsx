@@ -109,9 +109,13 @@ export default function AdminKeys() {
 
   const filteredKeys = useMemo(() => {
     if (!keys) return [];
-    return keys.filter(k => 
-      k.code.toLowerCase().includes(search.toLowerCase()) || 
-      (k.userEmail && k.userEmail.toLowerCase().includes(search.toLowerCase()))
+    const q = search.toLowerCase();
+    return keys.filter((k: any) =>
+      k.code.toLowerCase().includes(q) ||
+      (k.userEmail && k.userEmail.toLowerCase().includes(q)) ||
+      (k.customerName && k.customerName.toLowerCase().includes(q)) ||
+      (k.customerEmail && k.customerEmail.toLowerCase().includes(q)) ||
+      (k.customerPhone && k.customerPhone.toLowerCase().includes(q))
     );
   }, [keys, search]);
 
@@ -222,7 +226,7 @@ export default function AdminKeys() {
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Buscar por key ou e-mail..." 
+              placeholder="Buscar por key, revendedor, nome, e-mail ou telefone..." 
               className="pl-9 bg-black/20 border-white/10 focus-visible:ring-primary font-mono text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -274,7 +278,8 @@ export default function AdminKeys() {
                     <TableHead className="font-semibold">Key / Licença</TableHead>
                     <TableHead className="font-semibold">Plano</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Cliente</TableHead>
+                    <TableHead className="font-semibold">Conta (revendedor)</TableHead>
+                    <TableHead className="font-semibold">Cliente final</TableHead>
                     <TableHead className="font-semibold">Dispositivo HWID</TableHead>
                     <TableHead className="font-semibold">Expira em</TableHead>
                     <TableHead className="w-[80px]"></TableHead>
@@ -321,6 +326,17 @@ export default function AdminKeys() {
                           </span>
                         ) : (
                           <span className="text-xs text-muted-foreground italic tracking-wider uppercase">Não atribuída</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {(key as any).customerName || (key as any).customerEmail || (key as any).customerPhone ? (
+                          <div className="flex flex-col max-w-[180px]">
+                            {(key as any).customerName && <span className="text-sm text-foreground/90 truncate" title={(key as any).customerName}>{(key as any).customerName}</span>}
+                            {(key as any).customerEmail && <span className="text-xs text-muted-foreground truncate" title={(key as any).customerEmail}>{(key as any).customerEmail}</span>}
+                            {(key as any).customerPhone && <span className="text-xs text-muted-foreground truncate" title={(key as any).customerPhone}>{(key as any).customerPhone}</span>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>

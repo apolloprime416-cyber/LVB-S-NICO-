@@ -10,7 +10,8 @@ import {
   Menu,
   ShieldAlert,
   Download,
-  ShoppingCart
+  ShoppingCart,
+  Tag
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -27,20 +28,21 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [downloading, setDownloading] = useState(false);
 
   const isAdmin = session?.role === 'admin';
+  const isStaff = isAdmin || session?.role === 'manager';
 
   const handleDownloadExtension = async () => {
     setOpen(false);
     setDownloading(true);
     try {
-      const infoUrl = isAdmin ? '/api/admin/extension' : '/api/me/extension';
+      const infoUrl = isStaff ? '/api/admin/extension' : '/api/me/extension';
       const res = await fetch(infoUrl, { credentials: 'include' });
       const info = res.ok ? await res.json() : null;
       if (!info?.available) {
         toast({ variant: 'destructive', title: 'Indisponível', description: 'Nenhum arquivo de extensão foi publicado ainda.' });
-      } else if (!isAdmin && !info.unlocked) {
+      } else if (!isStaff && !info.unlocked) {
         toast({ variant: 'destructive', title: 'Download bloqueado', description: 'Adquira e ative uma key para liberar o download da extensão.' });
       } else {
-        window.location.href = isAdmin ? '/api/admin/extension/download' : '/api/me/extension/download';
+        window.location.href = isStaff ? '/api/admin/extension/download' : '/api/me/extension/download';
       }
     } catch {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível verificar o arquivo. Tente novamente.' });
@@ -49,10 +51,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const navItems = isAdmin ? [
+  const navItems = isStaff ? [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/usuarios', label: 'Usuários', icon: Users },
     { href: '/admin/keys', label: 'Keys', icon: Key },
+    ...(isAdmin ? [{ href: '/admin/promocoes', label: 'Promoções', icon: Tag }] : []),
   ] : [
     { href: '/painel', label: 'Minhas Keys', icon: Key },
     { href: '/planos', label: 'Planos e Preços', icon: ShoppingCart },
@@ -132,7 +135,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium leading-none">{session?.name}</span>
-                  <span className="text-xs text-muted-foreground mt-1">{session?.role === 'admin' ? 'Administrador' : 'Cliente'}</span>
+                  <span className="text-xs text-muted-foreground mt-1">{session?.role === 'admin' ? 'Administrador' : session?.role === 'manager' ? 'Gerente' : 'Cliente'}</span>
                 </div>
               </div>
               <Button variant="outline" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 border-white/5" onClick={handleLogout}>
