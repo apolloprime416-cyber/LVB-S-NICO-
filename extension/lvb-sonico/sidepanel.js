@@ -2091,7 +2091,8 @@ licenseKey = key;
 
   function ensureLovableBadgeHidden(css){
     var src = String(css || "");
-    var alreadyHidden = src.indexOf("#lovable-badge") !== -1 && /#lovable-badge[\s\S]*?display\s*:\s*none/i.test(src);
+    // Só considera removida se existir uma regra CSS do #lovable-badge com display:none DENTRO do bloco dela.
+    var alreadyHidden = /#lovable-badge[^{}]*\{[^}]*display\s*:\s*none/i.test(src);
     if(alreadyHidden) return { changed: false, css: src };
     var badgeCss = "\n\n#lovable-badge {\n  display: none !important;\n}\n";
     return { changed: true, css: src.replace(/\s+$/,"") + badgeCss };
@@ -2107,18 +2108,22 @@ licenseKey = key;
           if(chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
           if(!resp || !resp.success) return reject(new Error((resp && resp.error) || "Falha ao carregar arquivos do projeto."));
           var files = resp.files || [];
+          var knownPaths = ["src/styles.css","src/index.css","src/App.css","src/global.css","app/globals.css","styles/globals.css"];
+          var getPath = function(f){ return String((f && (f.path || f.name || f.file_path)) || "").replace(/^\//, ""); };
+          var getContent = function(f){ return f.content != null ? f.content : (f.contents != null ? f.contents : f.text); };
           var match = null;
           for(var i = 0; i < files.length; i++){
-            var f = files[i];
-            var p = f && (f.path || f.name || f.file_path || "");
-            var pn = String(p).replace(/^\//, "");
-            if(pn === "src/styles.css" || pn === "src/index.css" || pn === "src/App.css" || pn === "src/global.css" || pn === "app/globals.css" || pn === "styles/globals.css"){ match = f; break; }
+            if(knownPaths.indexOf(getPath(files[i])) !== -1){ match = files[i]; break; }
+          }
+          if(!match){
+            // Fallback: qualquer .css que pareça global (tailwind/:root), senão o primeiro .css do projeto.
+            var cssFiles = files.filter(function(f){ var p = getPath(f); return /\.css$/i.test(p) && p.indexOf("node_modules") === -1; });
+            match = cssFiles.find(function(f){ var c = getContent(f); return typeof c === "string" && (/@tailwind|@import\s+["']tailwindcss/i.test(c) || c.indexOf(":root") !== -1); }) || cssFiles[0] || null;
           }
           if(!match) return reject(new Error("CSS global do projeto não encontrado (src/styles.css, src/index.css...)."));
-          var content = match.content != null ? match.content : (match.contents != null ? match.contents : match.text);
+          var content = getContent(match);
           if(typeof content !== "string") return reject(new Error("Conteúdo do CSS global indisponível."));
-          resolve.__path = null;
-          resolve({ path: String(match.path || match.name || match.file_path).replace(/^\//, ""), css: content });
+          resolve({ path: getPath(match), css: content });
         });
       });
     });
@@ -2145,7 +2150,8 @@ licenseKey = key;
     var bodyText = "";
     try { bodyText = resp && resp.data ? (typeof resp.data === "string" ? resp.data : JSON.stringify(resp.data)) : ""; } catch(e){}
     console.info("[TS Extension] edit-code response:", status, bodyText);
-    if(!resp || resp.ok === false || status !== 200){
+    var isSuccess = resp && (resp.ok === true || (typeof status === "number" && status >= 200 && status < 300));
+    if(!isSuccess){
       throw new Error("edit-code failed: " + status + " " + bodyText);
     }
     return resp.data;

@@ -267,24 +267,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   // --- DOWNLOAD_PROJECT: fetch project source code from Lovable API ---
   if (msg && msg.action === "downloadProject") {
     (async function() {
-      try {
-        var apiUrl = "https://lovable-api.com/projects/" + msg.projectId + "/source-code";
-        var resp = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            "Authorization": "Bearer " + msg.token,
-            "Accept": "application/json"
-          }
-        });
-        if (!resp.ok) {
-          sendResponse({ success: false, error: "API retornou " + resp.status });
+      // Tenta os dois domínios da API do Lovable — o antigo e o novo.
+      var bases = ["https://lovable-api.com", "https://api.lovable.dev"];
+      var lastError = "Download falhou";
+      for (var bi = 0; bi < bases.length; bi++) {
+        try {
+          var apiUrl = bases[bi] + "/projects/" + msg.projectId + "/source-code";
+          var resp = await fetch(apiUrl, {
+            method: "GET",
+            headers: {
+              "Authorization": "Bearer " + msg.token,
+              "Accept": "application/json"
+            }
+          });
+          if (!resp.ok) { lastError = "API retornou " + resp.status; continue; }
+          var data = await resp.json();
+          sendResponse({ success: true, files: data.files || [] });
           return;
+        } catch(err) {
+          lastError = err.message || "Download falhou";
         }
-        var data = await resp.json();
-        sendResponse({ success: true, files: data.files || [] });
-      } catch(err) {
-        sendResponse({ success: false, error: err.message || "Download falhou" });
       }
+      sendResponse({ success: false, error: lastError });
     })();
     return true;
   }

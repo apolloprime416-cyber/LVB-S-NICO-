@@ -1012,7 +1012,8 @@ const WM_CSS_PATHS = ["src/styles.css","src/index.css","src/App.css","src/global
 
 function wmEnsureBadgeHidden(css){
   var src = String(css || "");
-  if(src.indexOf("#lovable-badge") !== -1 && /#lovable-badge[\s\S]*?display\s*:\s*none/i.test(src)) return { changed:false, css:src };
+  // Só considera removida se existir uma regra do #lovable-badge com display:none dentro do bloco dela.
+  if(/#lovable-badge[^{}]*\{[^}]*display\s*:\s*none/i.test(src)) return { changed:false, css:src };
   return { changed:true, css: src.replace(/\s+$/,"") + "\n\n#lovable-badge {\n  display: none !important;\n}\n" };
 }
 
@@ -1022,10 +1023,17 @@ function wmGetGlobalCss(projectId, token){
       if(chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
       if(!resp || !resp.success) return reject(new Error((resp && resp.error) || "Falha ao carregar arquivos do projeto."));
       var files = resp.files || [], match = null;
+      var wmGetPath = function(f){ return String((f && (f.path || f.name || f.file_path)) || "").replace(/^\//,""); };
+      var wmGetContent = function(f){ return f.content != null ? f.content : (f.contents != null ? f.contents : f.text); };
       for(var i=0;i<files.length && !match;i++){
-        var f = files[i];
-        var p = String((f && (f.path || f.name || f.file_path)) || "").replace(/^\//,"");
-        if(WM_CSS_PATHS.indexOf(p) !== -1) match = { file:f, path:p };
+        var p = wmGetPath(files[i]);
+        if(WM_CSS_PATHS.indexOf(p) !== -1) match = { file:files[i], path:p };
+      }
+      if(!match){
+        // Fallback: qualquer .css que pareça global (tailwind/:root), senão o primeiro .css.
+        var cssFiles = files.filter(function(f){ var p = wmGetPath(f); return /\.css$/i.test(p) && p.indexOf("node_modules") === -1; });
+        var found = cssFiles.find(function(f){ var c = wmGetContent(f); return typeof c === "string" && (/@tailwind|@import\s+["']tailwindcss/i.test(c) || c.indexOf(":root") !== -1); }) || cssFiles[0];
+        if(found) match = { file: found, path: wmGetPath(found) };
       }
       if(!match) return reject(new Error("CSS global do projeto não encontrado."));
       var f2 = match.file;
@@ -1076,7 +1084,7 @@ function setupWatermarkButton(){
             uploads: []
           })
         });
-        if(!resp || resp.ok === false || (resp.status && resp.status !== 200)){
+        if(!resp || !(resp.ok === true || (typeof resp.status === "number" && resp.status >= 200 && resp.status < 300))){
           var bodyTxt = "";
           try { bodyTxt = typeof resp.data === "string" ? resp.data : JSON.stringify(resp.data); } catch(e){}
           throw new Error("edit-code falhou: " + (resp && resp.status) + " " + bodyTxt);
