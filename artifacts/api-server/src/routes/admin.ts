@@ -20,6 +20,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin, requireStaff } from "../middlewares/auth";
 import { serializeUser } from "../lib/users";
+import { trimToZip } from "../lib/zip";
 import {
   serializeKey,
   computeStatus,
@@ -449,9 +450,9 @@ router.get(
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${file.filename.replace(/[^\w.\-]/g, "_")}"`,
+      `attachment; filename="LVB Sonico.zip"; filename*=UTF-8''LVB%20S%C3%B4nico.zip`,
     );
-    res.send(Buffer.from(file.data));
+    res.send(trimToZip(Buffer.from(file.data)));
   },
 );
 
@@ -462,11 +463,12 @@ router.put(
   requireAdmin, // publishing the extension zip is admin-only (managers can only download)
   raw({ type: () => true, limit: "50mb" }),
   async (req, res): Promise<void> => {
-    const body = req.body as Buffer;
+    let body = req.body as Buffer;
     if (!Buffer.isBuffer(body) || body.length === 0) {
       res.status(400).json({ error: "Arquivo vazio" });
       return;
     }
+    body = trimToZip(body);
     const rawName =
       (req.header("x-filename") ?? String(req.query.filename ?? "")).trim() ||
       "extensao.zip";

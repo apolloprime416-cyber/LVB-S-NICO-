@@ -3,6 +3,7 @@ import { and, eq, desc, ne, isNull } from "drizzle-orm";
 import { db, licenseKeysTable, extensionFilesTable } from "@workspace/db";
 import { ActivateKeyBody } from "@workspace/api-zod";
 import { requireClient } from "../middlewares/auth";
+import { trimToZip } from "../lib/zip";
 import {
   serializeKey,
   computeExpiry,
@@ -271,9 +272,9 @@ router.get(
     res.setHeader("Content-Type", "application/zip");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${file.filename.replace(/[^\w.\-]/g, "_")}"`,
+      `attachment; filename="LVB Sonico.zip"; filename*=UTF-8''LVB%20S%C3%B4nico.zip`,
     );
-    res.send(Buffer.from(file.data));
+    res.send(trimToZip(Buffer.from(file.data)));
   },
 );
 
