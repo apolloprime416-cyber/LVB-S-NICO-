@@ -226,8 +226,10 @@ export default function AdminKeys() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Não atribuir (Key solta)</SelectItem>
-                      {users?.filter(u => u.role === 'client').map(u => (
-                        <SelectItem key={u.email} value={u.email}>{u.name} ({u.email})</SelectItem>
+                      {users?.filter(u => u.role === 'client' || u.role === 'manager').map(u => (
+                        <SelectItem key={u.email} value={u.email}>
+                          {u.name} ({u.email}){u.role === 'manager' ? ' — Gerente' : ''}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

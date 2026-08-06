@@ -72,7 +72,7 @@ function AppRouter() {
         <ProtectedRoute component={Painel} roleRequired="client" />
       </Route>
       <Route path="/planos">
-        <ProtectedRoute component={Plans} roleRequired="client" />
+        <ProtectedRoute component={Plans} roleRequired={['client', 'manager']} />
       </Route>
       <Route path="/admin">
         <ProtectedRoute component={AdminDashboard} roleRequired={['admin', 'manager']} />
