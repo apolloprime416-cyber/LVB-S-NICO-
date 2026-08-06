@@ -240,11 +240,6 @@ export default function Plans() {
           Ao comprar qualquer plano você libera: download da extensão e geração ilimitada de keys de
           teste grátis (15 minutos) para divulgar e revender.
         </p>
-        <p className="mt-2">
-          A PUSHIN PAY atua exclusivamente como processadora de pagamentos e não possui qualquer
-          responsabilidade pela entrega, suporte, conteúdo, qualidade ou cumprimento das obrigações
-          relacionadas aos produtos ou serviços oferecidos pelo vendedor.
-        </p>
       </div>
 
       <Dialog open={payment !== null} onOpenChange={(o) => { if (!o) closeDialog(); }}>
