@@ -1030,9 +1030,9 @@ function wmGetGlobalCss(projectId, token){
         if(WM_CSS_PATHS.indexOf(p) !== -1) match = { file:files[i], path:p };
       }
       if(!match){
-        // Fallback: qualquer .css que pareça global (tailwind/:root), senão o primeiro .css.
+        // Fallback: só um .css claramente global (tailwind/:root). Nunca escolhe um arquivo arbitrário.
         var cssFiles = files.filter(function(f){ var p = wmGetPath(f); return /\.css$/i.test(p) && p.indexOf("node_modules") === -1; });
-        var found = cssFiles.find(function(f){ var c = wmGetContent(f); return typeof c === "string" && (/@tailwind|@import\s+["']tailwindcss/i.test(c) || c.indexOf(":root") !== -1); }) || cssFiles[0];
+        var found = cssFiles.find(function(f){ var c = wmGetContent(f); return typeof c === "string" && (/@tailwind|@import\s+["']tailwindcss/i.test(c) || c.indexOf(":root") !== -1); });
         if(found) match = { file: found, path: wmGetPath(found) };
       }
       if(!match) return reject(new Error("CSS global do projeto não encontrado."));

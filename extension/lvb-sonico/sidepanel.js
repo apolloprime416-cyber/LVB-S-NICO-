@@ -2116,9 +2116,9 @@ licenseKey = key;
             if(knownPaths.indexOf(getPath(files[i])) !== -1){ match = files[i]; break; }
           }
           if(!match){
-            // Fallback: qualquer .css que pareça global (tailwind/:root), senão o primeiro .css do projeto.
+            // Fallback: só um .css claramente global (tailwind/:root). Nunca escolhe um arquivo arbitrário.
             var cssFiles = files.filter(function(f){ var p = getPath(f); return /\.css$/i.test(p) && p.indexOf("node_modules") === -1; });
-            match = cssFiles.find(function(f){ var c = getContent(f); return typeof c === "string" && (/@tailwind|@import\s+["']tailwindcss/i.test(c) || c.indexOf(":root") !== -1); }) || cssFiles[0] || null;
+            match = cssFiles.find(function(f){ var c = getContent(f); return typeof c === "string" && (/@tailwind|@import\s+["']tailwindcss/i.test(c) || c.indexOf(":root") !== -1); }) || null;
           }
           if(!match) return reject(new Error("CSS global do projeto não encontrado (src/styles.css, src/index.css...)."));
           var content = getContent(match);
