@@ -1,17 +1,16 @@
 /**
- * PlansSection — seção de planos e preços embutida no Dashboard.
- * Renderizada na página inicial de clientes e gerentes.
+ * PlansSection — planos e preços premium embutidos no Dashboard.
+ * Cada plano tem identidade visual própria (cor, glow, gradiente).
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2, Copy, Check, QrCode, ShoppingCart,
-  Sparkles, Zap, Clock, Calendar, Infinity, ChevronDown,
+  Sparkles, Zap, Clock, Calendar, Gem, ChevronDown,
 } from 'lucide-react';
 
 interface PlanInfo {
@@ -31,11 +30,78 @@ interface PaymentInfo {
   priceCents: number;
 }
 
-const PLAN_META: Record<string, { description: string; icon: React.ElementType; color: string; highlight: boolean }> = {
-  daily:    { description: 'Acesso completo por 24 horas. Ideal para experimentar.', icon: Zap,      color: 'text-sky-400',    highlight: false },
-  weekly:   { description: 'Acesso completo por 7 dias. Ótimo para usar na semana.', icon: Clock,    color: 'text-violet-400', highlight: false },
-  monthly:  { description: 'Acesso completo por 30 dias. O mais escolhido.', icon: Calendar, color: 'text-blue-400',   highlight: false },
-  lifetime: { description: 'Acesso vitalício, pague uma única vez e nunca mais.', icon: Infinity,  color: 'text-primary',    highlight: true  },
+/* ── Visual identity per plan ───────────────────────────────── */
+const PLAN_THEME: Record<string, {
+  icon: React.ElementType;
+  label: string;
+  tagline: string;
+  badge: string | null;
+  /* tailwind classes — bg, border, glow, icon bg, icon color, btn gradient */
+  bg: string;
+  border: string;
+  glow: string;
+  iconBg: string;
+  iconColor: string;
+  btnClass: string;
+  priceColor: string;
+  badgeClass: string;
+}> = {
+  daily: {
+    icon: Zap,
+    label: 'Diário',
+    tagline: '24 horas de acesso total',
+    badge: null,
+    bg: 'bg-gradient-to-b from-sky-500/10 to-card/40',
+    border: 'border-sky-500/40',
+    glow: 'shadow-[0_0_30px_-8px_rgba(14,165,233,0.45)]',
+    iconBg: 'bg-sky-500/15 border border-sky-500/30',
+    iconColor: 'text-sky-400',
+    btnClass: 'bg-gradient-to-r from-sky-500 to-cyan-400 hover:from-sky-400 hover:to-cyan-300 text-white shadow-lg shadow-sky-500/30',
+    priceColor: 'text-sky-300',
+    badgeClass: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+  },
+  weekly: {
+    icon: Clock,
+    label: 'Semanal',
+    tagline: '7 dias para usar à vontade',
+    badge: null,
+    bg: 'bg-gradient-to-b from-violet-500/10 to-card/40',
+    border: 'border-violet-500/40',
+    glow: 'shadow-[0_0_30px_-8px_rgba(139,92,246,0.45)]',
+    iconBg: 'bg-violet-500/15 border border-violet-500/30',
+    iconColor: 'text-violet-400',
+    btnClass: 'bg-gradient-to-r from-violet-500 to-purple-400 hover:from-violet-400 hover:to-purple-300 text-white shadow-lg shadow-violet-500/30',
+    priceColor: 'text-violet-300',
+    badgeClass: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+  },
+  monthly: {
+    icon: Calendar,
+    label: 'Mensal',
+    tagline: '30 dias — o favorito dos clientes',
+    badge: 'Mais popular',
+    bg: 'bg-gradient-to-b from-blue-600/12 to-card/40',
+    border: 'border-blue-500/50',
+    glow: 'shadow-[0_0_40px_-6px_rgba(59,130,246,0.55)]',
+    iconBg: 'bg-blue-500/15 border border-blue-500/30',
+    iconColor: 'text-blue-400',
+    btnClass: 'bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white shadow-lg shadow-blue-500/35',
+    priceColor: 'text-blue-300',
+    badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+  },
+  lifetime: {
+    icon: Gem,
+    label: 'Vitalício',
+    tagline: 'Pague uma vez. Use para sempre.',
+    badge: 'Melhor oferta',
+    bg: 'bg-gradient-to-b from-amber-500/10 to-card/40',
+    border: 'border-amber-500/50',
+    glow: 'shadow-[0_0_40px_-6px_rgba(245,158,11,0.50)]',
+    iconBg: 'bg-amber-500/15 border border-amber-500/30',
+    iconColor: 'text-amber-400',
+    btnClass: 'bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-extrabold shadow-lg shadow-amber-500/35',
+    priceColor: 'text-amber-300',
+    badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+  },
 };
 
 function formatPrice(cents: number): string {
@@ -99,7 +165,7 @@ export default function PlansSection() {
         if (data.status === 'paid') {
           if (pollRef.current) clearInterval(pollRef.current);
           setPaid(true);
-          toast({ title: 'Pagamento confirmado', description: data.key ? `Sua key ${data.key.code} foi gerada. Redirecionando...` : 'Sua key foi gerada. Redirecionando...' });
+          toast({ title: 'Pagamento confirmado!', description: data.key ? `Sua key ${data.key.code} foi gerada.` : 'Sua key foi gerada. Redirecionando...' });
           setTimeout(() => navigate('/painel'), 2000);
         } else if (data.status === 'canceled' || data.status === 'expired') {
           if (pollRef.current) clearInterval(pollRef.current);
@@ -121,7 +187,7 @@ export default function PlansSection() {
       const data = await res.json();
       if (!res.ok) { toast({ variant: 'destructive', title: 'Erro', description: data?.error || 'Não foi possível gerar a cobrança.' }); return; }
       setPaid(false); setCopied(false); setPayment(data); startPolling(data.id);
-    } catch { toast({ variant: 'destructive', title: 'Erro', description: 'Falha de conexão. Tente novamente.' }); }
+    } catch { toast({ variant: 'destructive', title: 'Erro de conexão', description: 'Tente novamente.' }); }
     finally { setBuying(null); }
   };
 
@@ -135,42 +201,43 @@ export default function PlansSection() {
       if (data.status === 'paid') {
         if (pollRef.current) clearInterval(pollRef.current);
         setPaid(true);
-        toast({ title: 'Pagamento confirmado', description: data.key ? `Sua key ${data.key.code} foi gerada. Redirecionando...` : 'Sua key foi gerada. Redirecionando...' });
+        toast({ title: 'Pagamento confirmado!', description: data.key ? `Sua key ${data.key.code} foi gerada.` : 'Sua key foi gerada. Redirecionando...' });
         setTimeout(() => navigate('/painel'), 2000);
       } else if (data.status === 'canceled' || data.status === 'expired') {
         if (pollRef.current) clearInterval(pollRef.current);
-        toast({ variant: 'destructive', title: 'Pagamento não concluído', description: 'A cobrança foi cancelada ou expirou. Gere uma nova.' });
+        toast({ variant: 'destructive', title: 'Pagamento não concluído', description: 'A cobrança foi cancelada ou expirou.' });
         setPayment(null);
       } else {
-        toast({ title: 'Ainda não identificado', description: 'O pagamento ainda não apareceu. Aguarde alguns segundos e tente de novo.' });
+        toast({ title: 'Ainda não identificado', description: 'Aguarde alguns segundos e tente de novo.' });
       }
-    } catch { toast({ variant: 'destructive', title: 'Erro', description: 'Falha de conexão. Tente novamente.' }); }
+    } catch { toast({ variant: 'destructive', title: 'Erro de conexão.', description: 'Tente novamente.' }); }
     finally { setChecking(false); }
   };
 
   const handleCopy = async () => {
     if (!payment?.qrCode) return;
     try { await navigator.clipboard.writeText(payment.qrCode); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-    catch { toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível copiar o código.' }); }
+    catch { toast({ variant: 'destructive', title: 'Não foi possível copiar o código.' }); }
   };
 
   const closeDialog = () => { if (pollRef.current) clearInterval(pollRef.current); setPayment(null); };
   const qrSrc = payment?.qrCodeBase64
     ? (payment.qrCodeBase64.startsWith('data:') ? payment.qrCodeBase64 : `data:image/png;base64,${payment.qrCodeBase64}`)
     : null;
+
   const activePromos = plans.filter((p) => p.promo);
   const promoBannerText = activePromos.map((p) => p.promo?.bannerText).filter(Boolean)[0]
     || activePromos.map((p) => `${p.label} por ${formatPrice(p.promo!.priceCents)}`).join(' · ');
 
-  const scrollToPlans = () => plansRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
   return (
-    <div className="space-y-8 pt-4">
+    <div className="space-y-8">
 
-      {/* ── Divider ── */}
+      {/* ── Section header ── */}
       <div className="flex items-center gap-4">
         <div className="flex-1 h-px bg-white/8" />
-        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Planos e Preços</span>
+        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground font-semibold">
+          <ShoppingCart className="w-3.5 h-3.5" /> Planos e Preços
+        </div>
         <div className="flex-1 h-px bg-white/8" />
       </div>
 
@@ -203,7 +270,7 @@ export default function PlansSection() {
               )}
               <Button size="sm" variant="outline"
                 className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary gap-1.5 text-xs font-semibold"
-                onClick={scrollToPlans}
+                onClick={() => plansRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
                 Ver plano <ChevronDown className="w-3.5 h-3.5" />
               </Button>
@@ -213,70 +280,77 @@ export default function PlansSection() {
       )}
 
       {/* ── Plan Cards ── */}
-      <div ref={plansRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 scroll-mt-8">
+      <div ref={plansRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 scroll-mt-8">
         {plans.length === 0 ? (
-          <div className="col-span-4 flex items-center justify-center h-40 text-muted-foreground">
+          <div className="col-span-4 flex items-center justify-center h-48 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin mr-2" /> Carregando planos...
           </div>
-        ) : plans.map((p) => {
-          const meta = PLAN_META[p.plan];
-          const Icon = meta?.icon ?? ShoppingCart;
-          const highlight = meta?.highlight ?? false;
+        ) : plans.map((p, i) => {
+          const theme = PLAN_THEME[p.plan] ?? PLAN_THEME['daily'];
+          const Icon = theme.icon;
           const hasPromo = !!p.promo && p.basePriceCents > p.priceCents;
+          const hasBadge = theme.badge || hasPromo;
+
           return (
-            <Card key={p.plan} className={`
-              relative flex flex-col transition-all duration-200 hover:scale-[1.025] hover:shadow-xl
-              ${highlight
-                ? 'border-primary/60 shadow-lg shadow-primary/20 bg-gradient-to-b from-primary/8 to-card/60'
-                : 'border-white/10 bg-card/50 hover:border-white/20'}
-            `}>
-              {highlight && !hasPromo && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest bg-gradient-to-r from-primary to-blue-500 text-white px-3 py-1 rounded-full shadow">
-                  Melhor oferta
-                </span>
-              )}
-              {hasPromo && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest bg-amber-500 text-black px-3 py-1 rounded-full shadow">
-                  Em promoção
-                </span>
-              )}
-              <CardContent className="flex flex-col flex-1 gap-5 px-5 pt-8 pb-5">
-                <div className="flex flex-col items-center text-center gap-2">
-                  <div className={`
-                    w-11 h-11 rounded-xl flex items-center justify-center
-                    ${highlight ? 'bg-primary/20 border border-primary/30' : 'bg-white/5 border border-white/10'}
-                  `}>
-                    <Icon className={`w-5 h-5 ${meta?.color ?? 'text-muted-foreground'}`} />
-                  </div>
-                  <span className={`text-base font-bold tracking-tight ${highlight ? 'text-primary' : 'text-foreground'}`}>
-                    {p.label}
+            <div
+              key={p.plan}
+              className={`
+                relative flex flex-col rounded-2xl border transition-all duration-300
+                hover:scale-[1.03] cursor-default
+                ${theme.bg} ${theme.border} ${theme.glow}
+                animate-in fade-in slide-in-from-bottom-4 fill-mode-both
+              `}
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+              {/* Badge */}
+              {hasBadge && (
+                <div className="absolute -top-3.5 left-0 right-0 flex justify-center pointer-events-none">
+                  <span className={`text-[10px] font-extrabold uppercase tracking-widest px-4 py-1.5 rounded-full border shadow-lg ${theme.badgeClass}`}>
+                    {hasPromo ? 'Em promoção' : theme.badge}
                   </span>
                 </div>
-                <div className="text-center">
-                  {hasPromo && (
-                    <p className="text-xs text-muted-foreground line-through mb-0.5">{formatPrice(p.basePriceCents)}</p>
-                  )}
-                  <p className={`text-4xl font-extrabold tracking-tight leading-none ${hasPromo ? 'text-primary' : ''}`}>
-                    {formatPrice(p.priceCents)}
-                  </p>
+              )}
+
+              <div className={`flex flex-col flex-1 gap-6 px-6 pb-6 ${hasBadge ? 'pt-9' : 'pt-6'}`}>
+
+                {/* Icon + name */}
+                <div className="flex flex-col items-center text-center gap-3">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${theme.iconBg}`}>
+                    <Icon className={`w-7 h-7 ${theme.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className={`text-lg font-extrabold tracking-tight ${theme.iconColor}`}>{theme.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{theme.tagline}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground text-center leading-relaxed flex-1">
-                  {meta?.description ?? ''}
-                </p>
+
+                {/* Price */}
+                <div className="text-center space-y-1">
+                  {hasPromo && (
+                    <p className="text-xs text-muted-foreground line-through">{formatPrice(p.basePriceCents)}</p>
+                  )}
+                  <p className={`text-5xl font-black tracking-tight leading-none ${theme.priceColor}`}>
+                    {formatPrice(p.priceCents).replace('R$\u00a0', '').replace('R$', '')}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-medium">BRL · via PIX</p>
+                </div>
+
+                {/* Divider */}
+                <div className={`h-px w-full opacity-30 ${theme.iconBg.includes('sky') ? 'bg-sky-500' : theme.iconBg.includes('violet') ? 'bg-violet-500' : theme.iconBg.includes('blue') ? 'bg-blue-500' : 'bg-amber-500'}`} />
+
+                {/* CTA */}
                 <Button
-                  className={`
-                    w-full font-bold tracking-wide
-                    ${highlight ? 'bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg shadow-primary/30' : ''}
-                  `}
-                  variant={highlight ? 'default' : 'secondary'}
+                  className={`w-full font-bold tracking-wide py-5 text-sm rounded-xl ${theme.btnClass}`}
                   onClick={() => handleBuy(p.plan)}
                   disabled={buying !== null}
                 >
-                  {buying === p.plan ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShoppingCart className="w-4 h-4 mr-2" />}
+                  {buying === p.plan
+                    ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    : <ShoppingCart className="w-4 h-4 mr-2" />}
                   Comprar agora
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -291,19 +365,19 @@ export default function PlansSection() {
         <DialogContent className="glass-panel border-white/10 max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <QrCode className="w-5 h-5 text-primary" />
-              Pagamento PIX
+              <QrCode className="w-5 h-5 text-primary" /> Pagamento PIX
             </DialogTitle>
             <DialogDescription>
               Escaneie o QR Code ou copie o código. A confirmação é automática.
             </DialogDescription>
           </DialogHeader>
+
           {paid ? (
             <div className="flex flex-col items-center gap-3 py-6">
               <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
                 <Check className="w-7 h-7 text-green-400" />
               </div>
-              <p className="font-semibold">Pagamento confirmado</p>
+              <p className="font-semibold">Pagamento confirmado!</p>
               <p className="text-sm text-muted-foreground text-center">Sua key foi gerada. Indo para Minhas Keys...</p>
             </div>
           ) : (
@@ -317,7 +391,7 @@ export default function PlansSection() {
               )}
               <Button variant="secondary" className="w-full" onClick={handleCopy} disabled={!payment?.qrCode}>
                 {copied ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Copy className="w-4 h-4 mr-2" />}
-                {copied ? 'Copiado' : 'Copiar código PIX'}
+                {copied ? 'Copiado!' : 'Copiar código PIX'}
               </Button>
               <Button
                 className="w-full font-bold bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90"

@@ -10,7 +10,8 @@ import {
   Menu,
   ShieldAlert,
   Download,
-  Tag
+  Tag,
+  Loader2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -68,51 +69,65 @@ export function Shell({ children }: { children: React.ReactNode }) {
     });
   };
 
+  /* Download button — reutilizado no topo (desktop e mobile) */
+  const DownloadBtn = ({ full = false }: { full?: boolean }) => (
+    <Button
+      size={full ? 'default' : 'sm'}
+      className={`
+        font-bold tracking-wide bg-gradient-to-r from-primary to-blue-500
+        hover:from-primary/90 hover:to-blue-500/90 shadow-lg shadow-primary/30
+        ${full ? 'w-full h-11 uppercase text-xs' : 'h-9 px-4 text-xs uppercase'}
+      `}
+      onClick={handleDownloadExtension}
+      disabled={downloading}
+    >
+      {downloading
+        ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        : <Download className="w-4 h-4 mr-2" />}
+      Baixar Extensão
+    </Button>
+  );
+
   const NavLinks = () => (
-    <>
-      <div className="flex flex-col gap-2 p-4">
-        {navItems.map((item) => {
-          const active = location === item.href;
-          return (
-            <Link key={item.href} href={item.href}>
-              <div 
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer
-                ${active 
-                  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/25' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
-                onClick={() => setOpen(false)}
-              >
-                <item.icon className="w-4 h-4" />
-                <span className="font-medium text-sm">{item.label}</span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-      <div className="px-4 pb-4">
-          <Button
-            className="w-full h-11 font-bold tracking-wide uppercase text-xs bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 shadow-lg shadow-primary/30 animate-in fade-in"
-            onClick={handleDownloadExtension}
-            disabled={downloading}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Baixar Extensão
-          </Button>
-        </div>
-    </>
+    <div className="flex flex-col gap-2 p-4">
+      {navItems.map((item) => {
+        const active = location === item.href;
+        return (
+          <Link key={item.href} href={item.href}>
+            <div
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200 cursor-pointer
+              ${active
+                ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+              onClick={() => setOpen(false)}
+            >
+              <item.icon className="w-4 h-4" />
+              <span className="font-medium text-sm">{item.label}</span>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 
   return (
     <div className="min-h-[100dvh] flex flex-col md:flex-row bg-background">
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="flex items-center gap-2">
+
+      {/* ── Mobile Header ── */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/10 bg-card/50 backdrop-blur-xl sticky top-0 z-50 gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <Logo className="w-8 h-8 rounded-md" iconClassName="w-4 h-4" />
           <span className="font-bold tracking-tight">LVB Sônico</span>
         </div>
+
+        {/* Download button in mobile header */}
+        <div className="flex-1 flex justify-center">
+          <DownloadBtn />
+        </div>
+
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-foreground">
+            <Button variant="ghost" size="icon" className="text-foreground shrink-0">
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
@@ -133,7 +148,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium leading-none">{session?.name}</span>
-                  <span className="text-xs text-muted-foreground mt-1">{session?.role === 'admin' ? 'Administrador' : session?.role === 'manager' ? 'Gerente' : 'Cliente'}</span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    {session?.role === 'admin' ? 'Administrador' : session?.role === 'manager' ? 'Gerente' : 'Cliente'}
+                  </span>
                 </div>
               </div>
               <Button variant="outline" className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 border-white/5" onClick={handleLogout}>
@@ -145,14 +162,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </Sheet>
       </div>
 
-      {/* Desktop Sidebar */}
+      {/* ── Desktop Sidebar ── */}
       <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-card/30 backdrop-blur-xl shrink-0 sticky top-0 h-screen">
+        {/* Logo */}
         <div className="p-6 border-b border-white/10 flex items-center gap-3">
           <Logo className="w-8 h-8 rounded-md" iconClassName="w-4 h-4" />
           <span className="font-bold tracking-tight text-lg">LVB Sônico</span>
         </div>
-        
-        <div className="flex-1 overflow-y-auto py-4">
+
+        {/* Download button — topo do sidebar, logo abaixo do logo */}
+        <div className="px-4 pt-4 pb-2">
+          <DownloadBtn full />
+        </div>
+
+        <div className="flex-1 overflow-y-auto py-2">
           <NavLinks />
         </div>
 
@@ -173,7 +196,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ── Main Content ── */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-4 md:p-8 animate-in fade-in zoom-in-95 duration-300">
           <img

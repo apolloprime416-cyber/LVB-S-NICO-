@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
-import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check, Download, Lock, Package, UserRound, Pencil, Search as SearchIcon } from 'lucide-react';
+import { Loader2, Key as KeyIcon, Clock, Power, ShieldAlert, MonitorSmartphone, Plus, Copy, Check, UserRound, Pencil, Search as SearchIcon } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function PainelClient() {
@@ -81,13 +81,6 @@ export default function PainelClient() {
         k.code.toLowerCase().includes(q)
       );
 
-  const [extension, setExtension] = useState<{ available: boolean; unlocked: boolean; filename: string | null } | null>(null);
-  useEffect(() => {
-    fetch('/api/me/extension', { credentials: 'include' })
-      .then(r => (r.ok ? r.json() : null))
-      .then(setExtension)
-      .catch(() => setExtension(null));
-  }, [keys]);
 
   const handleActivate = () => {
     if (!activationCode) return;
@@ -242,6 +235,16 @@ export default function PainelClient() {
         </div>
       </div>
 
+      {/* ── Planos e Preços — topo da página inicial ── */}
+      <PlansSection />
+
+      {/* ── Minhas Licenças ── */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-px bg-white/8" />
+        <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">Minhas Licenças</span>
+        <div className="flex-1 h-px bg-white/8" />
+      </div>
+
       {!hasPaidKeys && (
         <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 flex items-start gap-4">
           <ShieldAlert className="w-5 h-5 text-primary mt-0.5 shrink-0" />
@@ -252,35 +255,6 @@ export default function PainelClient() {
             </p>
           </div>
         </div>
-      )}
-
-      {extension?.available && (
-        <Card className="glass-panel border-white/10">
-          <CardContent className="py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${extension.unlocked ? 'bg-primary/15 text-primary' : 'bg-white/5 text-muted-foreground'}`}>
-                {extension.unlocked ? <Package className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-foreground">Extensão LVB Sônico</h3>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {extension.unlocked
-                    ? 'Download liberado. Baixe a versão mais recente da extensão.'
-                    : 'Bloqueado — adquira uma key para liberar o download da extensão e os testes grátis.'}
-                </p>
-              </div>
-            </div>
-            <Button
-              className={`shrink-0 ${!extension.unlocked ? 'opacity-50 cursor-not-allowed grayscale' : 'shadow-lg shadow-primary/20'}`}
-              disabled={!extension.unlocked}
-              onClick={() => { window.location.href = '/api/me/extension/download'; }}
-              title={extension.unlocked ? 'Baixar extensão' : 'Adquira uma key para liberar'}
-            >
-              {extension.unlocked ? <Download className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
-              Baixar Extensão
-            </Button>
-          </CardContent>
-        </Card>
       )}
 
       {keys && keys.length > 0 && (
@@ -417,9 +391,6 @@ export default function PainelClient() {
           ))}
         </div>
       )}
-
-      {/* ── Planos e Preços — sempre visível no início do painel ── */}
-      <PlansSection />
 
       <Dialog open={editKeyId !== null} onOpenChange={(o) => { if (!o) setEditKeyId(null); }}>
         <DialogContent className="glass-panel border-white/10 sm:max-w-[425px]">
