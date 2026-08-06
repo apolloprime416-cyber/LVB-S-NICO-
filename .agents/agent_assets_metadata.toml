@@ -21,3 +21,10 @@ uri = "file://backups/INSTRUCAO-COMPLETA-LVB-SONICO.txt"
 type = "text"
 title = "Instrução completa — LVB Sônico"
 description = "Prompt completo para recriar todo o sistema: site, painéis, API, banco, pagamentos PIX e extensão Chrome."
+
+[[outputs]]
+id = "hcyKxyzknxDnBxFdbcvFt"
+uri = "file://backups/lvb-sonico-sem-key.zip"
+type = "unspecified"
+title = "LVB Sônico — cópia sem key"
+description = "Cópia da extensão sem validação de licença: abre direto, sem pedir key."
