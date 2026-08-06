@@ -7,7 +7,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import { db, paymentsTable, licenseKeysTable } from "@workspace/db";
-import { generateKeyCode } from "./keys";
+import { generateKeyCode, computeExpiry, type Plan } from "./keys";
 import { type PushinPayTransaction } from "./pushinpay";
 import { logger } from "./logger";
 
@@ -76,16 +76,19 @@ export async function settlePayment(
       .returning({ id: paymentsTable.id });
     if (claimed.length === 0) return null; // lost the race — already settled
 
+    const now = new Date();
     const [key] = await trx
       .insert(licenseKeysTable)
       .values({
         code: generateKeyCode(),
         plan: payment.plan,
-        status: "inactive",
+        // Keys are active from the moment of purchase — no panel activation needed
+        status: "active",
+        activatedAt: now,
+        expiresAt: computeExpiry(payment.plan as Plan, now),
         userId: payment.userId,
         userEmail: payment.userEmail,
         // createdById = buyer's userId so the key appears in their panel
-        // (GET /admin/keys for managers, GET /me/keys for clients both use this)
         createdById: payment.userId,
       })
       .returning({ id: licenseKeysTable.id });

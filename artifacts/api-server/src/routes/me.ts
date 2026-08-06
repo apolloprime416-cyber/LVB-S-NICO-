@@ -10,6 +10,7 @@ import {
   generateKeyCode,
   type Plan,
 } from "../lib/keys";
+// Note: activation endpoint kept for extension compatibility (device binding flow)
 
 const router: IRouter = Router();
 
@@ -199,12 +200,15 @@ router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
     return;
   }
 
+  const trialNow = new Date();
   const [created] = await db
     .insert(licenseKeysTable)
     .values({
       code: generateKeyCode(),
       plan: "trial",
-      status: "inactive",
+      status: "active",
+      activatedAt: trialNow,
+      expiresAt: computeExpiry("trial", trialNow),
       userId,
       userEmail: req.currentUser!.email,
       customerName: cleanCustomerField(req.body?.customerName),

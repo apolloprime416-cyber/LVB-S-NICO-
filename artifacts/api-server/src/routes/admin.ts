@@ -24,6 +24,7 @@ import { trimToZip } from "../lib/zip";
 import {
   serializeKey,
   computeStatus,
+  computeExpiry,
   generateKeyCode,
   isValidPlan,
   type Plan,
@@ -285,10 +286,13 @@ router.post("/admin/keys", async (req, res): Promise<void> => {
   // Always track who created the key so managers can filter their own
   const createdById = req.currentUser!.id;
 
+  const now = new Date();
   const values = Array.from({ length: quantity }, () => ({
     code: generateKeyCode(),
     plan,
-    status: "inactive" as const,
+    status: "active" as const,
+    activatedAt: now,
+    expiresAt: computeExpiry(plan as Plan, now),
     userId,
     userEmail,
     createdById,
