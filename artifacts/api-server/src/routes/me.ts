@@ -119,6 +119,14 @@ function cleanCustomerField(value: unknown): string | null {
   return v.length > 0 ? v : null;
 }
 
+/** Returns the cleaned email, or undefined when the value is present but malformed. */
+function cleanCustomerEmail(value: unknown): string | null | undefined {
+  const v = cleanCustomerField(value);
+  if (v === null) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return undefined;
+  return v;
+}
+
 router.patch(
   "/me/keys/:id/customer",
   requireClient,
@@ -137,11 +145,16 @@ router.patch(
       res.status(404).json({ error: "Key não encontrada" });
       return;
     }
+    const customerEmail = cleanCustomerEmail(req.body?.customerEmail);
+    if (customerEmail === undefined) {
+      res.status(400).json({ error: "E-mail do cliente inválido" });
+      return;
+    }
     const [updated] = await db
       .update(licenseKeysTable)
       .set({
         customerName: cleanCustomerField(req.body?.customerName),
-        customerEmail: cleanCustomerField(req.body?.customerEmail),
+        customerEmail,
       })
       .where(eq(licenseKeysTable.id, key.id))
       .returning();
@@ -171,6 +184,12 @@ router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
     return;
   }
 
+  const trialCustomerEmail = cleanCustomerEmail(req.body?.customerEmail);
+  if (trialCustomerEmail === undefined) {
+    res.status(400).json({ error: "E-mail do cliente inválido" });
+    return;
+  }
+
   const [created] = await db
     .insert(licenseKeysTable)
     .values({
@@ -180,7 +199,7 @@ router.post("/me/trial", requireClient, async (req, res): Promise<void> => {
       userId,
       userEmail: req.currentUser!.email,
       customerName: cleanCustomerField(req.body?.customerName),
-      customerEmail: cleanCustomerField(req.body?.customerEmail),
+      customerEmail: trialCustomerEmail,
     })
     .returning();
 
