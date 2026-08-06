@@ -209,15 +209,6 @@ router.get("/admin/keys", async (req, res): Promise<void> => {
 });
 
 router.post("/admin/keys", async (req, res): Promise<void> => {
-  // Managers need the canCreateKeys permission; admins always have it.
-  if (req.currentUser!.role === "manager") {
-    const [mgr] = await db.select().from(usersTable).where(eq(usersTable.id, req.currentUser!.id));
-    if (!mgr?.canCreateKeys) {
-      res.status(403).json({ error: "Permissão de gerar keys não habilitada para este gerente" });
-      return;
-    }
-  }
-
   const parsed = GenerateKeysBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -227,6 +218,21 @@ router.post("/admin/keys", async (req, res): Promise<void> => {
   if (!isValidPlan(plan)) {
     res.status(400).json({ error: "Plano inválido" });
     return;
+  }
+
+  // Managers: check canCreateKeys permission for paid plans.
+  // Without it, only "trial" keys are allowed.
+  if (req.currentUser!.role === "manager") {
+    const PAID_PLANS = ["daily", "weekly", "monthly", "lifetime"];
+    if (PAID_PLANS.includes(plan)) {
+      const [mgr] = await db.select().from(usersTable).where(eq(usersTable.id, req.currentUser!.id));
+      if (!mgr?.canCreateKeys) {
+        res.status(403).json({
+          error: "Permissão de gerar keys pagas não habilitada. Você só pode gerar keys de teste.",
+        });
+        return;
+      }
+    }
   }
 
   let userId: string | null = null;

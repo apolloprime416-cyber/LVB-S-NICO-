@@ -7,6 +7,8 @@ export function serializeSessionUser(row: UserRow) {
     email: row.email,
     role: row.role,
     status: row.status,
+    // Included for managers so the frontend can restrict the plan selector
+    canCreateKeys: row.role === "manager" ? (row.canCreateKeys ?? false) : undefined,
   };
 }
 

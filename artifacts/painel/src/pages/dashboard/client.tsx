@@ -344,7 +344,7 @@ export default function PainelClient() {
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-2">
                   <CardTitle className="text-lg">
-                    {planLabels[key.plan].split('—')[0].trim()}
+                    {(planLabels[key.plan] ?? key.plan ?? '-').split('—')[0].trim()}
                   </CardTitle>
                   <Button
                     variant="ghost"

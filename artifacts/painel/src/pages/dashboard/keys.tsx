@@ -6,6 +6,7 @@ import {
   useResetKeyDevice, 
   useDeleteKey,
   useGetUsers,
+  useGetSession,
   getGetKeysQueryKey,
   getGetAdminStatsQueryKey
 } from '@workspace/api-client-react';
@@ -22,6 +23,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, MoreVertical, Copy, ShieldAlert, MonitorSmartphone, PowerOff, Trash2, Key, Search, Plus, Check } from 'lucide-react';
 import { formatDate, planLabels, statusLabels, formatTimeLeft } from '@/lib/format';
 
+// Plans that require the "canCreateKeys" permission for managers
+const PAID_PLANS = ['daily', 'weekly', 'monthly', 'lifetime'] as const;
+
 export default function AdminKeys() {
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -29,6 +33,12 @@ export default function AdminKeys() {
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   
+  // Session: determines which plans are available in the generator
+  const { data: session } = useGetSession();
+  const isAdmin = session?.role === 'admin';
+  const isManager = session?.role === 'manager';
+  const canCreatePaidKeys = isAdmin || (isManager && !!(session as any)?.canCreateKeys);
+
   // Filters for the query
   const queryParams: any = {};
   if (planFilter !== 'all') queryParams.plan = planFilter;
@@ -45,7 +55,8 @@ export default function AdminKeys() {
   const resetMutation = useResetKeyDevice();
   const deleteMutation = useDeleteKey();
 
-  const [genPlan, setGenPlan] = useState<string>('monthly');
+  // Default plan: if manager without permission, start with trial; otherwise monthly
+  const [genPlan, setGenPlan] = useState<string>(() => 'monthly');
   const [genQty, setGenQty] = useState<string>('1');
   const [genUser, setGenUser] = useState<string>('none');
   const [generatedKeysResult, setGeneratedKeysResult] = useState<{code: string}[] | null>(null);
@@ -68,10 +79,12 @@ export default function AdminKeys() {
       toast({ variant: 'destructive', title: 'Quantidade inválida', description: 'Gere entre 1 e 500 keys.' });
       return;
     }
+    // Ensure managers without paid-key permission always send 'trial'
+    const effectivePlan = canCreatePaidKeys ? genPlan : 'trial';
     
     generateMutation.mutate({
       data: {
-        plan: genPlan as any,
+        plan: effectivePlan as any,
         quantity: qty,
         userEmail: genUser !== 'none' ? genUser : null
       }
@@ -164,17 +177,33 @@ export default function AdminKeys() {
               </div>
             ) : (
               <div className="py-4 space-y-4">
+                {/* Notice for managers without paid-key permission */}
+                {isManager && !canCreatePaidKeys && (
+                  <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-sm text-amber-400">
+                    <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>Você só pode gerar keys de <strong>Teste</strong>. Peça ao administrador para ativar a permissão de gerar keys pagas.</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Plano</label>
-                    <Select value={genPlan} onValueChange={setGenPlan}>
+                    <Select
+                      value={canCreatePaidKeys ? genPlan : 'trial'}
+                      onValueChange={(v) => { if (canCreatePaidKeys) setGenPlan(v); }}
+                      disabled={!canCreatePaidKeys}
+                    >
                       <SelectTrigger className="bg-black/20 border-white/10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(planLabels).map(([val, label]) => (
-                          <SelectItem key={val} value={val}>{label}</SelectItem>
-                        ))}
+                        {/* Managers without permission: only trial */}
+                        {canCreatePaidKeys ? (
+                          Object.entries(planLabels).map(([val, label]) => (
+                            <SelectItem key={val} value={val}>{label}</SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="trial">{planLabels['trial']}</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -305,7 +334,7 @@ export default function AdminKeys() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm font-medium">{planLabels[key.plan].split('—')[0].trim()}</span>
+                        <span className="text-sm font-medium">{(planLabels[key.plan] ?? key.plan ?? '-').split('—')[0].trim()}</span>
                       </TableCell>
                       <TableCell>
                         <Badge 
