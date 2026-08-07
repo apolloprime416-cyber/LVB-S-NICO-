@@ -98,12 +98,49 @@ window.addEventListener("message", (event)=>{
   }catch(e){ console.warn("[QuantumHook] erro xhr",e); }
 })();
 
+// Bug fix: ao abrir qualquer projeto no lovable.dev, lê o token direto do
+// localStorage do Supabase (sem esperar um fetch ser interceptado).
+// O Lovable usa Supabase e salva o token como `sb-<ref>-auth-token`.
+function tryTokenFromLocalStorage(){
+  try {
+    for(let i = 0; i < localStorage.length; i++){
+      const key = localStorage.key(i);
+      if(!key || !key.startsWith("sb-") || !key.endsWith("-auth-token")) continue;
+      const raw = localStorage.getItem(key);
+      if(!raw) continue;
+      const parsed = JSON.parse(raw);
+      // supabase v2: { access_token, ... }
+      const access = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
+      if(access && typeof access === "string" && access.length > 20){
+        notifyFound(access, getProjectFromPage(), true);
+        return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+
+// Tenta imediatamente ao carregar e depois a cada 1.5s para pegar token e projeto
+tryTokenFromLocalStorage();
+
 setInterval(()=>{
   const p = getProjectFromPage();
-  if(p && p !== capturedProjectId){
+  const projectChanged = p && p !== capturedProjectId;
+  // Se ainda não temos token, tenta localStorage novamente
+  if(!capturedToken) tryTokenFromLocalStorage();
+  if(projectChanged){
     capturedProjectId = p;
     window.postMessage({ type:"lovableTokenFound", token:capturedToken, projectId:p },"*");
   }
 },1500);
+
+// Responde a pedidos explícitos de token (ex: do content.js após ativação de key)
+window.addEventListener("message", (e)=>{
+  if(!e.data || e.data.type !== "lovableRequestToken") return;
+  tryTokenFromLocalStorage();
+  if(capturedToken && capturedProjectId){
+    window.postMessage({ type:"lovableTokenFound", token:capturedToken, projectId:capturedProjectId },"*");
+  }
+});
 
 })();

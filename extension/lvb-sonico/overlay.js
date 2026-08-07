@@ -14,6 +14,11 @@
   // e toggles múltiplos (TS_TOGGLE_OVERLAY chega a todos os frames da aba).
   if (window.top !== window) return;
 
+  // Bug fix: só injeta UI (seta, sidebar, launcher, interceptação de Enter)
+  // no lovable.dev. Em outros sites (YouTube, Google, etc.) a extensão não
+  // deve mostrar nada nem interceptar teclas — apenas captura passiva de token.
+  if (!location.hostname.endsWith('lovable.dev')) return;
+
   if (typeof window.TS_DEBUG === "undefined") window.TS_DEBUG = false;
   const tsDebug = (...args) => { if (window.TS_DEBUG) console.log(...args); };
 
