@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LVB Sônico",
-  "version": "32.0.3",
+  "version": "32.0.4",
   "description": "LVB Sônico — Assistente premium com licenciamento por key.",
   "permissions": [
     "storage",

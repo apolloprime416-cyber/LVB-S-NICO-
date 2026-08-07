@@ -404,6 +404,7 @@
   }
 
   let currentLayoutMode = "popup"; // "sidebar" | "popup"
+  let interceptLocked = false; // 🔒 cadeado: bloqueia interceptação de teclado em qualquer página
   const LVB_ICONS = {
     bug: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="m19 7-3 2"/><path d="m5 7 3 2"/><path d="m19 19-3-2"/><path d="m5 19 3-2"/><path d="M20 13h-4"/><path d="M4 13h4"/><path d="m10 4 1 2"/><path d="m14 4-1 2"/></svg>',
     refresh: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
@@ -1120,14 +1121,20 @@
     chevronL:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>',
   };
 
-  const MAIN_ITEMS = [
-    { action: "sidebar",   icon: LICON.panelRight, label: "Modo Sidebar" },
-    { action: "watermark", icon: LICON.badgeX,     label: "Remover marca d'água" },
-    { action: "download",  icon: LICON.download,   label: "Baixar" },
-    { action: "optimize",  icon: LICON.sparkles,   label: "Otimizar" },
-    { action: "notifications", icon: LICON.bell,   label: "Notificações" },
-    { action: "prompts",   icon: LICON.library,    label: "Prompts Prontos", isPrompts: true },
-  ];
+  const LOCK_ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+  const LOCK_ICON_ON  = '<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" fill="rgba(239,68,68,.1)"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
+  function getMainItems() {
+    return [
+      { action: "sidebar",       icon: LICON.panelRight, label: "Modo Sidebar" },
+      { action: "watermark",     icon: LICON.badgeX,     label: "Remover marca d'água" },
+      { action: "download",      icon: LICON.download,   label: "Baixar" },
+      { action: "optimize",      icon: LICON.sparkles,   label: "Otimizar" },
+      { action: "notifications", icon: LICON.bell,       label: "Notificações" },
+      { action: "lock",          icon: interceptLocked ? LOCK_ICON_ON : LOCK_ICON_OFF, label: interceptLocked ? "Desbloquear teclado" : "Bloquear teclado", isLock: true },
+      { action: "prompts",       icon: LICON.library,    label: "Prompts Prontos", isPrompts: true },
+    ];
+  }
 
   // Determine which side of the preview the launcher is on, to align the
   // menu opposite of the closest edge.
@@ -1201,10 +1208,11 @@
     const menu = document.createElement("div");
     menu.id = MENU_ID;
     menu.setAttribute("role", "menu");
-    menu.innerHTML = MAIN_ITEMS.map((it, i) => {
+    menu.innerHTML = getMainItems().map((it, i) => {
       const chev = it.isPrompts ? `<span class="ts-fab-chevron">${LICON.chevronL}</span>` : "";
       const badge = it.action === "notifications" ? `<span class="ts-fab-badge" data-ts-notif-badge style="display:none">0</span>` : "";
-      return `<button type="button" class="ts-fab-item ${it.isPrompts ? "ts-fab-prompts" : ""}" data-action="${it.action}" style="animation-delay:${i * 40}ms">` +
+      const extraClass = it.isPrompts ? " ts-fab-prompts" : (it.isLock && interceptLocked ? " ts-fab-lock-active" : "");
+      return `<button type="button" class="ts-fab-item${extraClass}" data-action="${it.action}" style="animation-delay:${i * 40}ms">` +
         `<span class="ts-fab-circle">${it.icon}${badge}</span>` +
         `<span class="ts-fab-label">${escapeHtml(it.label)}</span>` +
         chev +
@@ -1396,6 +1404,11 @@
       closeMenu();
     } else if (action === "notifications") {
       openNotificationsPanel();
+    } else if (action === "lock") {
+      interceptLocked = !interceptLocked;
+      try { chrome.storage.local.set({ ts_intercept_locked: interceptLocked }); } catch (_) {}
+      showStatus(interceptLocked ? "🔒 Teclado bloqueado — extensão pausada" : "🔓 Teclado desbloqueado", interceptLocked ? "error" : "success");
+      closeMenu();
     } else if (action === "prompts") {
       if (document.getElementById(SUBMENU_ID)) { closeSubmenu(); return; }
       openPromptsSubmenu();
@@ -1558,6 +1571,10 @@
       finalPrompt = text ? (pfx + (pfx.endsWith(":") || pfx.endsWith(" ") ? "" : " ") + text) : pfx;
       clearPopupSelectedSkill();
     }
+    // Qualidade: força Lovable a executar o prompt com máxima precisão
+    if (finalPrompt && finalPrompt.trim().length > 20) {
+      finalPrompt = finalPrompt.trimEnd() + '\n\nIMPORTANTE: Execute TODOS os detalhes desta tarefa com máxima precisão. Não ignore nada, não simplifique, implemente EXATAMENTE o que foi pedido.';
+    }
     const ok = sendPromptViaIframe(finalPrompt, readyFiles);
     if (ok === false && hasFiles) {
       showStatus("Envio interceptado falhou. Verifique o console.", "error");
@@ -1570,6 +1587,8 @@
   // Intercept Enter on the native composer in popup mode.
   document.addEventListener("keydown", (e) => {
     if (currentLayoutMode !== "popup") return;
+    if (interceptLocked) return; // 🔒 cadeado ativo — não intercepta teclas
+    if (!location.pathname.match(/\/projects\/[0-9a-fA-F-]{36}/i)) return; // só dentro de projetos
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
     const target = e.target;
     if (!target || !(target.tagName === "TEXTAREA" || (target.getAttribute && target.getAttribute("contenteditable") === "true"))) return;
@@ -1585,6 +1604,8 @@
   // Intercept form submit in popup mode.
   document.addEventListener("submit", (e) => {
     if (currentLayoutMode !== "popup") return;
+    if (interceptLocked) return; // 🔒 cadeado
+    if (!location.pathname.match(/\/projects\/[0-9a-fA-F-]{36}/i)) return;
     const form = e.target;
     if (!form || !form.contains) return;
     const composer = findNativeComposer();
@@ -2046,9 +2067,10 @@
     injectGlobalStyles();
     buildOverlay();
     try {
-      chrome.storage.local.get({ sidebarCollapsed: false, tsExtensionLayoutMode: "sidebar" }, (r) => {
+      chrome.storage.local.get({ sidebarCollapsed: false, tsExtensionLayoutMode: "sidebar", ts_intercept_locked: false }, (r) => {
         applyLayoutMode((r && r.tsExtensionLayoutMode) || "sidebar");
         applyCollapsedState(Boolean(r && r.sidebarCollapsed));
+        interceptLocked = Boolean(r && r.ts_intercept_locked);
       });
     } catch (_) {
       applyLayoutMode("sidebar");
@@ -2111,6 +2133,7 @@
       if (area !== "local") return;
       if (changes.tsExtensionLayoutMode) applyLayoutMode(changes.tsExtensionLayoutMode.newValue || "sidebar");
       if (changes.sidebarCollapsed) applyCollapsedState(Boolean(changes.sidebarCollapsed.newValue));
+      if (changes.ts_intercept_locked !== undefined) interceptLocked = Boolean(changes.ts_intercept_locked.newValue);
     });
   } catch (_) {}
 

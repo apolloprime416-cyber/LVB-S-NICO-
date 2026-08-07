@@ -599,6 +599,17 @@ const soundBtn = e.target.closest('.sp-sound-btn');
     return;
   }
 
+  const lockBtn = e.target.closest('.sp-lock-btn');
+  if (lockBtn) {
+    e.stopPropagation();
+    chrome.storage.local.get({ ts_intercept_locked: false }, (r) => {
+      const newLocked = !r.ts_intercept_locked;
+      chrome.storage.local.set({ ts_intercept_locked: newLocked });
+      updateLockBtnVisual(newLocked);
+    });
+    return;
+  }
+
   const settingsBtn = e.target.closest('.sp-settings-btn');
   if (settingsBtn) {
     e.stopPropagation();
@@ -1328,8 +1339,12 @@ licenseKey = key;
               '</svg>' +
             '</button>' +
 
-            '' +
-
+            '<button class="sp-profile-action sp-lock-btn" id="sp-lock-toggle" title="Bloquear teclado (pausa interceptação da extensão)">' +
+              '<svg class="sp-action-icon" id="sp-lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<rect x="3" y="11" width="18" height="11" rx="2"/>' +
+                '<path id="sp-lock-path" d="M7 11V7a5 5 0 0 1 9.9-1"/>' +
+              '</svg>' +
+            '</button>' +
 
             '<button class="sp-profile-action sp-logout-btn" title="Sair">' +
               '<svg class="sp-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
@@ -1377,9 +1392,14 @@ licenseKey = key;
 
 
     updateSync();
+    // Carrega estado inicial do cadeado
+    chrome.storage.local.get({ ts_intercept_locked: false }, (r) => {
+      updateLockBtnVisual(Boolean(r.ts_intercept_locked));
+    });
 
     chrome.storage.onChanged.addListener((ch) => {
       if (ch.lovable_projectId || ch.lovable_token) updateSync();
+      if (ch.ts_intercept_locked !== undefined) updateLockBtnVisual(Boolean(ch.ts_intercept_locked.newValue));
     });
 
     // updateCountdown();
@@ -1602,6 +1622,31 @@ licenseKey = key;
       if(r.lovable_projectId && r.lovable_token) { el.className = 'sp-sync-status sp-sync-ok'; el.textContent = 'Sincronizado! Projeto: ' + r.lovable_projectId.substring(0,6) + '...'; }
       else { el.className = 'sp-sync-status sp-sync-waiting'; el.textContent = 'Aguardando sincronização...'; }
     });
+  }
+
+  function updateLockBtnVisual(locked) {
+    const btn = document.getElementById('sp-lock-toggle');
+    if (!btn) return;
+    const icon = document.getElementById('sp-lock-icon');
+    const path = document.getElementById('sp-lock-path');
+    if (locked) {
+      btn.title = '🔒 Extensão bloqueada — clique para desbloquear';
+      btn.style.color = '#ef4444';
+      if (icon) { icon.style.stroke = '#ef4444'; icon.style.strokeWidth = '2.5'; }
+      if (path) path.setAttribute('d', 'M7 11V7a5 5 0 0 1 10 0v4');
+    } else {
+      btn.title = 'Bloquear teclado (pausa interceptação da extensão)';
+      btn.style.color = '';
+      if (icon) { icon.style.stroke = ''; icon.style.strokeWidth = '2'; }
+      if (path) path.setAttribute('d', 'M7 11V7a5 5 0 0 1 9.9-1');
+    }
+    // Bloqueia/desbloqueia o botão de envio do sidepanel
+    const sendBtn = document.getElementById('sp-send');
+    if (sendBtn) {
+      sendBtn.disabled = locked;
+      sendBtn.style.opacity = locked ? '0.35' : '';
+      sendBtn.title = locked ? '🔒 Desbloqueie o cadeado para enviar' : 'Enviar';
+    }
   }
 
   // --- Countdown ---
