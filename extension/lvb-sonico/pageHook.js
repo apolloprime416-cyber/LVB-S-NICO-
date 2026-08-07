@@ -98,9 +98,14 @@ window.addEventListener("message", (event)=>{
   }catch(e){ console.warn("[QuantumHook] erro xhr",e); }
 })();
 
-// Bug fix: ao abrir qualquer projeto no lovable.dev, lê o token direto do
+// Fix sync: ao abrir qualquer projeto no lovable.dev, lê o token direto do
 // localStorage do Supabase (sem esperar um fetch ser interceptado).
-// O Lovable usa Supabase e salva o token como `sb-<ref>-auth-token`.
+// O Lovable usa Supabase e salva a sessão como `sb-<ref>-auth-token`.
+//
+// IMPORTANTE: só chama notifyFound (que posta mensagem para content.js) quando
+// há TAMBÉM um projeto aberto na URL. Se não há projeto na URL (ex: homepage),
+// apenas guarda o token em capturedToken para uso posterior — nunca posta mensagem
+// com projectId=null, pois isso faria content.js APAGAR os tokens do storage.
 function tryTokenFromLocalStorage(){
   try {
     for(let i = 0; i < localStorage.length; i++){
@@ -112,7 +117,15 @@ function tryTokenFromLocalStorage(){
       // supabase v2: { access_token, ... }
       const access = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
       if(access && typeof access === "string" && access.length > 20){
-        notifyFound(access, getProjectFromPage(), true);
+        const projectId = getProjectFromPage();
+        if(projectId){
+          // Usuário está num projeto: notifica imediatamente (sync fica verde)
+          notifyFound(access, projectId, true);
+        } else {
+          // Sem projeto na URL (ex: homepage): armazena só em memória.
+          // O setInterval abaixo vai notificar quando o projeto for detectado.
+          if(access !== capturedToken) capturedToken = access;
+        }
         return true;
       }
     }
@@ -120,13 +133,13 @@ function tryTokenFromLocalStorage(){
   return false;
 }
 
-// Tenta imediatamente ao carregar e depois a cada 1.5s para pegar token e projeto
+// Tenta imediatamente ao carregar e depois a cada 1.5s
 tryTokenFromLocalStorage();
 
 setInterval(()=>{
   const p = getProjectFromPage();
   const projectChanged = p && p !== capturedProjectId;
-  // Se ainda não temos token, tenta localStorage novamente
+  // Se ainda não temos token, tenta localStorage
   if(!capturedToken) tryTokenFromLocalStorage();
   if(projectChanged){
     capturedProjectId = p;
@@ -134,13 +147,8 @@ setInterval(()=>{
   }
 },1500);
 
-// Responde a pedidos explícitos de token (ex: do content.js após ativação de key)
-window.addEventListener("message", (e)=>{
-  if(!e.data || e.data.type !== "lovableRequestToken") return;
-  tryTokenFromLocalStorage();
-  if(capturedToken && capturedProjectId){
-    window.postMessage({ type:"lovableTokenFound", token:capturedToken, projectId:capturedProjectId },"*");
-  }
-});
+// Nota: o handler de lovableRequestToken já existe acima (linhas 31-36).
+// NÃO duplicar aqui — o handler original já chama notifyFound com capturedToken
+// que agora é preenchido por tryTokenFromLocalStorage().
 
 })();
